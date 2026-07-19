@@ -47,6 +47,7 @@ return [
             'report' => false,
         ],
 
+        // DeQode media library uses S3. With FILESYSTEM_DISK=s3, empty AWS_* fails loudly at boot.
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -56,8 +57,8 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
-            'report' => false,
+            'throw' => true,
+            'report' => true,
         ],
 
     ],

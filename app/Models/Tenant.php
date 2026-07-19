@@ -41,9 +41,19 @@ class Tenant extends Model
         return $this->hasMany(Collection::class);
     }
 
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
     public function qodes(): HasMany
     {
         return $this->hasMany(Qode::class);
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(File::class);
     }
 
     public function subscriptions(): HasMany

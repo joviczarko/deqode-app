@@ -7,6 +7,7 @@ use Database\Factories\CollectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['tenant_id', 'name', 'is_default'])]
 class Collection extends Model
@@ -26,5 +27,10 @@ class Collection extends Model
         return [
             'is_default' => 'boolean',
         ];
+    }
+
+    public function qodes(): HasMany
+    {
+        return $this->hasMany(Qode::class);
     }
 }

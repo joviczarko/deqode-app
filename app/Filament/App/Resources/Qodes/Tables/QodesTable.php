@@ -8,6 +8,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class QodesTable
@@ -21,7 +22,24 @@ class QodesTable
                 TextColumn::make('type')->badge(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('collection.name')->label('Collection'),
+                TextColumn::make('categories.name')
+                    ->label('Categories')
+                    ->badge()
+                    ->separator(','),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('collection_id')
+                    ->label('Collection')
+                    ->relationship('collection', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('categories')
+                    ->label('Category')
+                    ->relationship('categories', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([

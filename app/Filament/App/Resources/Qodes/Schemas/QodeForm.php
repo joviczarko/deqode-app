@@ -27,6 +27,12 @@ class QodeForm
                     ->options(fn () => Collection::query()->orderBy('name')->pluck('name', 'id'))
                     ->required()
                     ->searchable(),
+                Select::make('categories')
+                    ->label('Categories')
+                    ->relationship('categories', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->searchable(),
                 Select::make('type')
                     ->options(fn (ModuleRegistry $registry): array => $registry->options())
                     ->required()

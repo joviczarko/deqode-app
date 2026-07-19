@@ -1,32 +1,30 @@
 <?php
 
-namespace App\Filament\App\Resources\Collections;
+namespace App\Filament\App\Resources\Categories;
 
-use App\Filament\App\Resources\Collections\Pages\ManageCollections;
-use App\Models\Collection;
+use App\Filament\App\Resources\Categories\Pages\ManageCategories;
+use App\Models\Category;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
-class CollectionResource extends Resource
+class CategoryResource extends Resource
 {
-    protected static ?string $model = Collection::class;
+    protected static ?string $model = Category::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {
@@ -35,10 +33,6 @@ class CollectionResource extends Resource
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Toggle::make('is_default')
-                    ->label('Default collection')
-                    ->disabled()
-                    ->dehydrated(false),
             ]);
     }
 
@@ -47,15 +41,15 @@ class CollectionResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
-                IconColumn::make('is_default')->boolean()->label('Default'),
+                TextColumn::make('qodes_count')
+                    ->counts('qodes')
+                    ->label('Qodes'),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('id', 'desc')
-            ->checkIfRecordIsSelectableUsing(fn (Collection $record): bool => ! $record->is_default)
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()
-                    ->disabled(fn (Collection $record): bool => $record->is_default),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -67,7 +61,7 @@ class CollectionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ManageCollections::route('/'),
+            'index' => ManageCategories::route('/'),
         ];
     }
 }

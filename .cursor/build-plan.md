@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 1a complete — ready for Chunk 1b  
+**Status:** Chunk 1b complete — ready for Chunk 1c  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -99,9 +99,9 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Exit criteria
 
-* [ ] Assign Collection/Categories on Qode; filter works.
-* [ ] Upload appears in Files; object key is tenant-prefixed.
-* [ ] Pest: category attach; file record created (fake S3 disk in tests).
+* [x] Assign Collection/Categories on Qode; filter works.
+* [x] Upload appears in Files; object key is tenant-prefixed.
+* [x] Pest: category attach; file record created (fake S3 disk in tests).
 
 ---
 
