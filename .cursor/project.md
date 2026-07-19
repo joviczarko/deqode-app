@@ -103,7 +103,7 @@ Out of scope for DeQode.
 ## Mental model
 
 * **Qode** = billable unit = analytics unit.
-* One active **type** at a time; switch allowed with wipe warning.
+* One active **type** at a time; switching type **preserves** settings so Content (etc.) can be reactivated after a Redirect campaign. Redirect is always 302; destination is an external URL or another non-redirect Qode (no redirect→redirect cascades/loops).
 * Quota = **Qode count**.
 
 ## Built-in vs registry modules

@@ -6,6 +6,7 @@ use App\Enums\QodeType;
 use App\Filament\App\Resources\Qodes\QodeResource;
 use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
+use App\QodeModules\RedirectDestination;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -34,9 +35,14 @@ class EditQode extends EditRecord
         /** @var Qode $record */
         $record = $this->getRecord();
         $newType = QodeType::from($data['type']);
+        $defaults = app(ModuleRegistry::class)->get($newType)->defaultSettings();
+        $incoming = is_array($data['settings'] ?? null) ? $data['settings'] : [];
 
-        if ($record->type !== $newType) {
-            $data['settings'] = app(ModuleRegistry::class)->get($newType)->defaultSettings();
+        // Keep prior module settings (e.g. Content body) when switching to Redirect.
+        $data['settings'] = array_merge($defaults, $record->settings ?? [], $incoming);
+
+        if ($newType === QodeType::Redirect) {
+            $data['settings'] = app(RedirectDestination::class)->validateForSave($record, $data['settings']);
         }
 
         return $data;

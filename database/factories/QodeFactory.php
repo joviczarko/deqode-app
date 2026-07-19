@@ -32,8 +32,9 @@ class QodeFactory extends Factory
             'type' => QodeType::Redirect,
             'status' => QodeStatus::Active,
             'settings' => [
+                'destination' => 'url',
                 'url' => 'https://example.com',
-                'status_code' => 302,
+                'target_qode_id' => null,
             ],
         ];
     }

@@ -6,6 +6,7 @@ use App\Enums\QodeType;
 use App\Filament\App\Resources\Qodes\QodeResource;
 use App\Models\Domain;
 use App\QodeModules\ModuleRegistry;
+use App\QodeModules\RedirectDestination;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Validation\ValidationException;
 
@@ -28,9 +29,14 @@ class CreateQode extends CreateRecord
         }
 
         $type = QodeType::from($data['type'] ?? 'redirect');
+        $defaults = app(ModuleRegistry::class)->get($type)->defaultSettings();
         $data['domain_id'] = $domain->id;
         $data['tenant_id'] = auth()->user()?->tenant_id;
-        $data['settings'] = app(ModuleRegistry::class)->get($type)->defaultSettings();
+        $data['settings'] = array_merge($defaults, $data['settings'] ?? []);
+
+        if ($type === QodeType::Redirect) {
+            $data['settings'] = app(RedirectDestination::class)->validateForSave(null, $data['settings']);
+        }
 
         return $data;
     }

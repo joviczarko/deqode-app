@@ -6,12 +6,13 @@ use App\Enums\QodeType;
 use App\Models\Collection;
 use App\Models\Domain;
 use App\Models\Tenant;
+use App\QodeModules\RedirectDestination;
 use App\Support\SqidsEncoder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('resolves an active qode by domain and slug', function () {
+it('redirects an active qode to the configured url with 302', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -25,13 +26,18 @@ it('resolves an active qode by domain and slug', function () {
         'name' => 'Bottle label',
         'collection_id' => $collection->id,
         'type' => QodeType::Redirect->value,
+        'settings' => [
+            'destination' => RedirectDestination::MODE_URL,
+            'url' => 'https://instagram.com/deqode',
+            'target_qode_id' => null,
+        ],
     ]);
 
     expect($qode->slug)->toBe(app(SqidsEncoder::class)->encode($qode->id));
 
     $this->get('/r/'.$qode->slug)
-        ->assertSuccessful()
-        ->assertSee('Redirect Qode stub', false);
+        ->assertRedirect('https://instagram.com/deqode')
+        ->assertStatus(302);
 });
 
 it('returns 404 for unknown slug', function () {
@@ -92,12 +98,15 @@ it('keeps redirect qodes bare without the html layout', function () {
         'name' => 'Campaign redirect',
         'collection_id' => $collection->id,
         'type' => QodeType::Redirect->value,
+        'settings' => [
+            'destination' => RedirectDestination::MODE_URL,
+            'url' => 'https://example.com/campaign',
+        ],
     ]);
 
     $this->get('/r/'.$qode->slug)
-        ->assertSuccessful()
-        ->assertHeader('content-type', 'text/plain; charset=UTF-8')
-        ->assertSee('Redirect Qode stub', false)
+        ->assertRedirect('https://example.com/campaign')
+        ->assertStatus(302)
         ->assertDontSee('data-deqode-wrapper', false)
         ->assertDontSee('@picocss/pico', false);
 });

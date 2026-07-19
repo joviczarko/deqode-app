@@ -5,12 +5,13 @@ namespace App\Filament\App\Resources\Qodes\Schemas;
 use App\Enums\QodeStatus;
 use App\Enums\QodeType;
 use App\Models\Collection;
+use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
+use App\QodeModules\RedirectDestination;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class QodeForm
@@ -38,23 +39,58 @@ class QodeForm
                     ->required()
                     ->live()
                     ->default(QodeType::Redirect->value)
-                    ->afterStateUpdated(function (?string $state, ?string $old, Set $set, Get $get): void {
-                        if ($old === null || $state === $old || ! $get('id')) {
-                            return;
-                        }
-
-                        Notification::make()
-                            ->title('Type change will wipe module settings')
-                            ->body('Saving a different type replaces settings for the new module defaults.')
-                            ->warning()
-                            ->send();
-                    }),
+                    ->helperText('Switching type keeps prior module settings so you can reactivate Content later.'),
                 Select::make('status')
                     ->options(collect(QodeStatus::cases())->mapWithKeys(
                         fn (QodeStatus $status) => [$status->value => ucfirst($status->value)]
                     ))
                     ->required()
                     ->default(QodeStatus::Active->value),
+                Radio::make('settings.destination')
+                    ->label('Redirect to')
+                    ->options([
+                        RedirectDestination::MODE_URL => 'External URL',
+                        RedirectDestination::MODE_QODE => 'Another Qode',
+                    ])
+                    ->default(RedirectDestination::MODE_URL)
+                    ->live()
+                    ->required(fn (Get $get): bool => $get('type') === QodeType::Redirect->value)
+                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Redirect->value)
+                    ->dehydrated(fn (Get $get): bool => $get('type') === QodeType::Redirect->value),
+                TextInput::make('settings.url')
+                    ->label('Destination URL')
+                    ->url()
+                    ->required(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
+                        && $get('settings.destination') === RedirectDestination::MODE_URL)
+                    ->default('https://example.com')
+                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
+                        && $get('settings.destination') === RedirectDestination::MODE_URL)
+                    ->dehydrated(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
+                        && $get('settings.destination') === RedirectDestination::MODE_URL),
+                Select::make('settings.target_qode_id')
+                    ->label('Destination Qode')
+                    ->searchable()
+                    ->helperText('Only non-redirect Qodes. Redirect-to-redirect is blocked to prevent cascades and loops.')
+                    ->getSearchResultsUsing(function (string $search, ?Qode $record, RedirectDestination $destination): array {
+                        $tenantId = (int) ($record?->tenant_id ?? auth()->user()?->tenant_id ?? 0);
+
+                        return $destination->searchableOptions(
+                            $tenantId,
+                            $record?->id,
+                            $search,
+                        );
+                    })
+                    ->getOptionLabelUsing(function (mixed $value, ?Qode $record, RedirectDestination $destination): ?string {
+                        $tenantId = (int) ($record?->tenant_id ?? auth()->user()?->tenant_id ?? 0);
+
+                        return $destination->optionLabel($tenantId, $record?->id, $value);
+                    })
+                    ->required(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
+                        && $get('settings.destination') === RedirectDestination::MODE_QODE)
+                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
+                        && $get('settings.destination') === RedirectDestination::MODE_QODE)
+                    ->dehydrated(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
+                        && $get('settings.destination') === RedirectDestination::MODE_QODE),
                 TextInput::make('slug')
                     ->disabled()
                     ->dehydrated(false)

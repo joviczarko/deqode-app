@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\RecordVisit;
 use App\Enums\DomainStatus;
 use App\Enums\QodeStatus;
 use App\Models\Domain;
@@ -12,8 +13,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class QodeResolveController extends Controller
 {
-    public function __invoke(Request $request, string $slug, ModuleRegistry $registry): Response
-    {
+    public function __invoke(
+        Request $request,
+        string $slug,
+        ModuleRegistry $registry,
+        RecordVisit $recordVisit,
+    ): Response {
         $domain = $this->resolveDomain($request);
 
         if ($domain === null) {
@@ -28,6 +33,8 @@ class QodeResolveController extends Controller
         if ($qode === null || $qode->status !== QodeStatus::Active) {
             abort(404);
         }
+
+        $recordVisit->handle($qode, $request);
 
         return $registry->get($qode->type)->render($qode, $request);
     }

@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 1c complete — ready for Chunk 2a  
+**Status:** Chunk 2a complete — ready for Chunk 2b  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -128,14 +128,17 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Work
 
-1. Settings: URL + status code (302 default).
+1. Settings: external URL **or** another non-redirect Qode; always **302** (no 301).
 2. Bare redirect response; enqueue visit stub if visits not ready.
 3. Default/recommended type in create flow.
+4. Type switch **preserves** settings (Content can be reactivated after a Redirect campaign).
+5. No redirect→redirect (blocks cascades and loops).
 
 ### Exit criteria
 
-* [ ] Scan → 302 to configured URL.
-* [ ] Pest: redirect target + status.
+* [x] Scan → 302 to configured URL.
+* [x] Pest: redirect target + status.
+* [x] Internal Qode target + cascade/loop blocked; settings survive type switch.
 
 ---
 
