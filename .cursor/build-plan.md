@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Locked — ready for Layer 0a execution  
+**Status:** Chunk 0a complete — ready for Chunk 0b  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -34,10 +34,10 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Exit criteria
 
-* [ ] Login as seeded superadmin on `deqode.test`.
-* [ ] Complete signup intent → tenant id ≥ 4000, default Collection, Free/Trial attached.
-* [ ] Tenant panel loads for that user; cannot see other tenants’ data (smoke test).
-* [ ] Pest: signup intent happy path; tenant isolation smoke.
+* [x] Login as seeded superadmin on `deqode.test`.
+* [x] Complete signup intent → tenant id ≥ 4000, default Collection, Free/Trial attached.
+* [x] Tenant panel loads for that user; cannot see other tenants’ data (smoke test).
+* [x] Pest: signup intent happy path; tenant isolation smoke.
 
 ---
 
