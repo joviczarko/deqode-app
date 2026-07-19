@@ -30,13 +30,15 @@ class ContentModule implements QodeModule
 
     public function render(Qode $qode, Request $request): Response
     {
-        $title = (string) ($qode->settings['title'] ?? $qode->name);
+        $qode->loadMissing('tenant');
 
-        // Chunk 1a stub — full Pico wrapper arrives in 1c / 2b.
-        return response(
-            "Content Qode stub: {$title}",
-            200,
-            ['Content-Type' => 'text/plain; charset=UTF-8']
-        );
+        $title = (string) ($qode->settings['title'] ?? $qode->name);
+        $body = (string) ($qode->settings['body'] ?? '');
+
+        return response()->view('modules.content', [
+            'qode' => $qode,
+            'title' => $title,
+            'body' => $body,
+        ]);
     }
 }

@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 1b complete — ready for Chunk 1c  
+**Status:** Chunk 1c complete — ready for Chunk 2a  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -117,8 +117,8 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Exit criteria
 
-* [ ] Content-type Qode returns HTML with Pico; wrapper present.
-* [ ] Redirect path still bare (when Redirect ships) — no layout.
+* [x] Content-type Qode returns HTML with Pico; wrapper present.
+* [x] Redirect path still bare (when Redirect ships) — no layout.
 
 ---
 
