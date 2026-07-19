@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
-it('redirects to another non-redirect qode public url', function () {
+it('redirects to another qode that is not redirecting', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -28,24 +28,31 @@ it('redirects to another non-redirect qode public url', function () {
         ],
     ]);
 
-    $redirect = app(CreateQode::class)->handle($tenant, [
+    $printed = app(CreateQode::class)->handle($tenant, [
         'name' => 'Printed label',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
+        'type' => QodeType::Content->value,
         'settings' => [
-            'destination' => RedirectDestination::MODE_QODE,
-            'target_qode_id' => $content->id,
+            'title' => 'Parked content',
+            'body' => '<p>Still here</p>',
+            'redirect' => [
+                'to' => RedirectDestination::MODE_QODE,
+                'target_qode_id' => $content->id,
+            ],
         ],
     ]);
 
     $targetUrl = app(QodeUrlBuilder::class)->forQode($content->fresh());
 
-    $this->get('/r/'.$redirect->slug)
+    $this->get('/r/'.$printed->slug)
         ->assertRedirect($targetUrl)
         ->assertStatus(302);
+
+    expect($printed->fresh()->settings['title'])->toBe('Parked content')
+        ->and($printed->fresh()->type)->toBe(QodeType::Content);
 });
 
-it('rejects redirect targets that are themselves redirects', function () {
+it('rejects targets that are themselves redirecting', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -54,25 +61,27 @@ it('rejects redirect targets that are themselves redirects', function () {
     $outer = app(CreateQode::class)->handle($tenant, [
         'name' => 'Outer',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
         'settings' => [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://example.com',
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://example.com',
+            ],
         ],
     ]);
 
     $inner = app(CreateQode::class)->handle($tenant, [
         'name' => 'Inner',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
         'settings' => [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://example.com/elsewhere',
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://example.com/elsewhere',
+            ],
         ],
     ]);
 
     expect(fn () => app(RedirectDestination::class)->validateForSave($outer, [
-        'destination' => RedirectDestination::MODE_QODE,
+        'to' => RedirectDestination::MODE_QODE,
         'target_qode_id' => $inner->id,
     ]))->toThrow(ValidationException::class);
 });
@@ -86,20 +95,15 @@ it('rejects self-referential redirect targets', function () {
     $qode = app(CreateQode::class)->handle($tenant, [
         'name' => 'Loop risk',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
-        'settings' => [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://example.com',
-        ],
     ]);
 
     expect(fn () => app(RedirectDestination::class)->validateForSave($qode, [
-        'destination' => RedirectDestination::MODE_QODE,
+        'to' => RedirectDestination::MODE_QODE,
         'target_qode_id' => $qode->id,
     ]))->toThrow(ValidationException::class);
 });
 
-it('returns 404 when a stored target qode is a redirect cascade', function () {
+it('returns 404 when a stored target later starts redirecting', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -108,31 +112,32 @@ it('returns 404 when a stored target qode is a redirect cascade', function () {
     $content = app(CreateQode::class)->handle($tenant, [
         'name' => 'Was content',
         'collection_id' => $collection->id,
-        'type' => QodeType::Content->value,
     ]);
 
-    $redirect = app(CreateQode::class)->handle($tenant, [
+    $printed = app(CreateQode::class)->handle($tenant, [
         'name' => 'Points at content',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
         'settings' => [
-            'destination' => RedirectDestination::MODE_QODE,
-            'target_qode_id' => $content->id,
+            'redirect' => [
+                'to' => RedirectDestination::MODE_QODE,
+                'target_qode_id' => $content->id,
+            ],
         ],
     ]);
 
     $content->forceFill([
-        'type' => QodeType::Redirect,
-        'settings' => [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://example.com/hijack',
-        ],
+        'settings' => array_replace_recursive($content->settings, [
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://example.com/hijack',
+            ],
+        ]),
     ])->save();
 
-    $this->get('/r/'.$redirect->slug)->assertNotFound();
+    $this->get('/r/'.$printed->slug)->assertNotFound();
 });
 
-it('preserves content settings when switching type to redirect', function () {
+it('keeps module content while redirect is on and restores it when redirect is off', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -149,38 +154,39 @@ it('preserves content settings when switching type to redirect', function () {
     ]);
 
     $qode->forceFill([
-        'type' => QodeType::Redirect,
-        'settings' => array_merge($qode->settings, [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://example.com/promo',
-            'target_qode_id' => null,
+        'settings' => array_replace_recursive($qode->settings, [
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://example.com/promo',
+            ],
         ]),
-    ])->save();
-
-    $qode->refresh();
-
-    expect($qode->type)->toBe(QodeType::Redirect)
-        ->and($qode->settings['title'])->toBe('Winter story')
-        ->and($qode->settings['body'])->toBe('<p>Keep me</p>')
-        ->and($qode->settings['url'])->toBe('https://example.com/promo');
-
-    $qode->forceFill([
-        'type' => QodeType::Content,
     ])->save();
 
     $qode->refresh();
 
     expect($qode->type)->toBe(QodeType::Content)
         ->and($qode->settings['title'])->toBe('Winter story')
-        ->and($qode->settings['body'])->toBe('<p>Keep me</p>');
+        ->and($qode->settings['body'])->toBe('<p>Keep me</p>')
+        ->and($qode->settings['redirect']['to'])->toBe(RedirectDestination::MODE_URL);
 
     $this->get('/r/'.$qode->slug)
+        ->assertRedirect('https://example.com/promo');
+
+    $qode->forceFill([
+        'settings' => array_replace_recursive($qode->settings, [
+            'redirect' => [
+                'to' => RedirectDestination::MODE_NONE,
+            ],
+        ]),
+    ])->save();
+
+    $this->get('/r/'.$qode->fresh()->slug)
         ->assertSuccessful()
         ->assertSee('Winter story', false)
         ->assertSee('Keep me', false);
 });
 
-it('excludes redirect qodes from searchable destination options', function () {
+it('excludes redirecting qodes from searchable destination options', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -189,17 +195,21 @@ it('excludes redirect qodes from searchable destination options', function () {
     $content = app(CreateQode::class)->handle($tenant, [
         'name' => 'Safe target',
         'collection_id' => $collection->id,
-        'type' => QodeType::Content->value,
     ]);
 
-    $redirect = app(CreateQode::class)->handle($tenant, [
+    $redirecting = app(CreateQode::class)->handle($tenant, [
         'name' => 'Not a target',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
+        'settings' => [
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://example.com',
+            ],
+        ],
     ]);
 
     $options = app(RedirectDestination::class)->searchableOptions((int) $tenant->id, null, '');
 
     expect($options)->toHaveKey($content->id)
-        ->and($options)->not->toHaveKey($redirect->id);
+        ->and($options)->not->toHaveKey($redirecting->id);
 });

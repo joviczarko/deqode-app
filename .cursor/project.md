@@ -103,14 +103,15 @@ Out of scope for DeQode.
 ## Mental model
 
 * **Qode** = billable unit = analytics unit.
-* One active **type** at a time; switching type **preserves** settings so Content (etc.) can be reactivated after a Redirect campaign. Redirect is always 302; destination is an external URL or another non-redirect Qode (no redirect→redirect cascades/loops).
+* One active **module type** at a time (Content, Link hub, …). **Redirect is not a type** — it is an optional per-Qode setting (`Don't redirect` / External URL / Another Qode). Module settings stay editable while a redirect is on.
+* Redirect is always **302**. Destination may be an external URL or another Qode that is **not** itself redirecting (no cascades/loops).
 * Quota = **Qode count**.
 
 ## Built-in vs registry modules
 
 | Module | Role |
 | --- | --- |
-| **Redirect** | **Built-in / strategic.** Dynamic QR → bare **302/301** to destination (Instagram, campaign URL, etc.). No HTML wrapper. Always available as a first-class type. |
+| **Redirect** | **Not a module.** Per-Qode setting that short-circuits resolve to a bare **302**. |
 | **Content** | Registry module. Simple page: Filament rich editor / WYSIWYG body. Smoke-test for wrapper→template→content. Keep minimal. |
 | Link hub, Form, File download | Registry modules; ship in later chunks. |
 
@@ -287,7 +288,7 @@ Execution order and exit criteria live in [build-plan.md](build-plan.md) (finer 
 
 * Platform: panels, tenancy, signup, Free/Trial, Demo billing.
 * Qode core: collections/categories, domains, resolve, **Sqids default slugs**, QR (simple-qrcode), simple media on S3, render wrapper/template.
-* Modules: Redirect (built-in, bare 302), Content (WYSIWYG), then Link hub, Form+Leads, File download.
+* Modules: Content (WYSIWYG), then Link hub, Form+Leads, File download; plus per-Qode Redirect setting (bare 302).
 * Analytics + custom domain TXT + vanity slugs.
 
 Deferred ideas: [backlog.md](backlog.md).
@@ -295,7 +296,7 @@ Deferred ideas: [backlog.md](backlog.md).
 ## V1 success criteria
 
 1. Sign up → Free/Trial; use Demo checkout for paid path.  
-2. Default Collection; create Qode (Redirect and Content at minimum).  
+2. Default Collection; create Qode (Content at minimum) with optional Redirect override.  
 3. QR downloads; local scan via `deqode.test/r/{slug}`; prod via `qr.deqode.me/{slug}`.  
 4. Change destination/content without reprinting.  
 5. Visits + leads visible when those chunks ship.  

@@ -5,7 +5,6 @@ namespace App\QodeModules;
 use App\Enums\QodeType;
 use App\QodeModules\Contracts\QodeModule;
 use App\QodeModules\Modules\ContentModule;
-use App\QodeModules\Modules\RedirectModule;
 use InvalidArgumentException;
 
 class ModuleRegistry
@@ -14,7 +13,6 @@ class ModuleRegistry
      * @var array<string, class-string<QodeModule>>
      */
     private array $modules = [
-        'redirect' => RedirectModule::class,
         'content' => ContentModule::class,
     ];
 
@@ -45,6 +43,6 @@ class ModuleRegistry
 
     public function defaultType(): QodeType
     {
-        return QodeType::Redirect;
+        return QodeType::Content;
     }
 }

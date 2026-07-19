@@ -2,13 +2,14 @@
 
 namespace App\QodeModules;
 
-use App\Enums\QodeType;
 use App\Models\Qode;
 use App\Support\QodeUrlBuilder;
 use Illuminate\Validation\ValidationException;
 
 class RedirectDestination
 {
+    public const MODE_NONE = 'none';
+
     public const MODE_URL = 'url';
 
     public const MODE_QODE = 'qode';
@@ -18,30 +19,62 @@ class RedirectDestination
     ) {}
 
     /**
-     * @return array<string, mixed>
+     * @return array{redirect: array{to: string, url: string|null, target_qode_id: int|null}}
      */
     public function defaults(): array
     {
         return [
-            'destination' => self::MODE_URL,
-            'url' => 'https://example.com',
-            'target_qode_id' => null,
+            'redirect' => [
+                'to' => self::MODE_NONE,
+                'url' => 'https://example.com',
+                'target_qode_id' => null,
+            ],
         ];
     }
 
     /**
-     * Resolve the final absolute URL for a Redirect Qode. Always one hop.
-     * Target Qodes must not themselves be Redirect (no cascade / loops).
+     * @return array<string, string>
      */
-    public function urlFor(Qode $qode): string
+    public function modeOptions(): array
     {
-        $settings = $qode->settings ?? [];
-        $mode = (string) ($settings['destination'] ?? self::MODE_URL);
+        return [
+            self::MODE_NONE => "Don't redirect",
+            self::MODE_URL => 'External URL',
+            self::MODE_QODE => 'Another Qode',
+        ];
+    }
+
+    public function isRedirecting(Qode $qode): bool
+    {
+        return $this->mode($qode) !== self::MODE_NONE;
+    }
+
+    public function mode(Qode $qode): string
+    {
+        $to = $qode->settings['redirect']['to'] ?? self::MODE_NONE;
+
+        return in_array($to, [self::MODE_NONE, self::MODE_URL, self::MODE_QODE], true)
+            ? $to
+            : self::MODE_NONE;
+    }
+
+    /**
+     * Absolute URL when redirect is enabled; null when "Don't redirect".
+     */
+    public function urlOrNull(Qode $qode): ?string
+    {
+        $mode = $this->mode($qode);
+
+        if ($mode === self::MODE_NONE) {
+            return null;
+        }
 
         if ($mode === self::MODE_QODE) {
             $target = $this->findAllowedTarget(
                 tenantId: (int) $qode->tenant_id,
-                targetId: isset($settings['target_qode_id']) ? (int) $settings['target_qode_id'] : null,
+                targetId: isset($qode->settings['redirect']['target_qode_id'])
+                    ? (int) $qode->settings['redirect']['target_qode_id']
+                    : null,
                 excludeId: (int) $qode->id,
             );
 
@@ -52,7 +85,7 @@ class RedirectDestination
             return $this->urls->forQode($target);
         }
 
-        $url = trim((string) ($settings['url'] ?? ''));
+        $url = trim((string) ($qode->settings['redirect']['url'] ?? ''));
 
         if ($url === '') {
             abort(404);
@@ -62,29 +95,40 @@ class RedirectDestination
     }
 
     /**
-     * @param  array<string, mixed>  $settings
-     * @return array<string, mixed>
+     * @param  array<string, mixed>  $redirect
+     * @return array{to: string, url: string|null, target_qode_id: int|null}
      */
-    public function validateForSave(Qode|int|null $source, array $settings): array
+    public function validateForSave(Qode|int|null $source, array $redirect): array
     {
-        $mode = (string) ($settings['destination'] ?? self::MODE_URL);
+        $mode = (string) ($redirect['to'] ?? self::MODE_NONE);
         $sourceId = $source instanceof Qode ? (int) $source->id : (is_int($source) ? $source : null);
         $tenantId = $source instanceof Qode
             ? (int) $source->tenant_id
             : (int) (auth()->user()?->tenant_id ?? 0);
 
-        if ($mode === self::MODE_QODE) {
-            $targetId = isset($settings['target_qode_id']) ? (int) $settings['target_qode_id'] : null;
+        $url = isset($redirect['url']) ? trim((string) $redirect['url']) : null;
+        $targetId = isset($redirect['target_qode_id']) && $redirect['target_qode_id'] !== ''
+            ? (int) $redirect['target_qode_id']
+            : null;
 
+        if ($mode === self::MODE_NONE) {
+            return [
+                'to' => self::MODE_NONE,
+                'url' => $url !== '' ? $url : 'https://example.com',
+                'target_qode_id' => $targetId,
+            ];
+        }
+
+        if ($mode === self::MODE_QODE) {
             if ($targetId === null || $targetId === 0) {
                 throw ValidationException::withMessages([
-                    'settings.target_qode_id' => 'Select a Qode to redirect to.',
+                    'settings.redirect.target_qode_id' => 'Select a Qode to redirect to.',
                 ]);
             }
 
             if ($sourceId !== null && $targetId === $sourceId) {
                 throw ValidationException::withMessages([
-                    'settings.target_qode_id' => 'A Qode cannot redirect to itself.',
+                    'settings.redirect.target_qode_id' => 'A Qode cannot redirect to itself.',
                 ]);
             }
 
@@ -92,40 +136,43 @@ class RedirectDestination
 
             if ($target === null) {
                 throw ValidationException::withMessages([
-                    'settings.target_qode_id' => 'Choose an active non-redirect Qode from your account. Redirect-to-redirect is not allowed.',
+                    'settings.redirect.target_qode_id' => 'Choose an active Qode that is not itself redirecting. Cascades and loops are not allowed.',
                 ]);
             }
 
-            $settings['target_qode_id'] = $target->id;
-            $settings['destination'] = self::MODE_QODE;
-
-            return $settings;
+            return [
+                'to' => self::MODE_QODE,
+                'url' => $url !== '' && $url !== null ? $url : 'https://example.com',
+                'target_qode_id' => $target->id,
+            ];
         }
 
-        $url = trim((string) ($settings['url'] ?? ''));
-
-        if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
+        if ($mode !== self::MODE_URL) {
             throw ValidationException::withMessages([
-                'settings.url' => 'Enter a valid destination URL.',
+                'settings.redirect.to' => 'Invalid redirect option.',
             ]);
         }
 
-        $settings['destination'] = self::MODE_URL;
-        $settings['url'] = $url;
+        if ($url === null || $url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            throw ValidationException::withMessages([
+                'settings.redirect.url' => 'Enter a valid destination URL.',
+            ]);
+        }
 
-        return $settings;
+        return [
+            'to' => self::MODE_URL,
+            'url' => $url,
+            'target_qode_id' => $targetId,
+        ];
     }
 
     /**
-     * Options for the Filament searchable select (non-redirect Qodes only).
-     *
      * @return array<int, string>
      */
     public function searchableOptions(int $tenantId, ?int $excludeId, string $search = ''): array
     {
         $query = Qode::query()
             ->where('tenant_id', $tenantId)
-            ->where('type', '!=', QodeType::Redirect->value)
             ->when($excludeId !== null, fn ($q) => $q->whereKeyNot($excludeId))
             ->orderByDesc('id')
             ->limit(50);
@@ -140,6 +187,7 @@ class RedirectDestination
         }
 
         return $query->get()
+            ->filter(fn (Qode $qode): bool => ! $this->isRedirecting($qode))
             ->mapWithKeys(fn (Qode $qode): array => [
                 $qode->id => $qode->name.' ('.$qode->slug.')',
             ])
@@ -176,16 +224,12 @@ class RedirectDestination
             ->whereKey($targetId)
             ->first();
 
-        if ($target === null) {
+        if ($target === null || ! $target->isActive()) {
             return null;
         }
 
-        // No redirect→redirect (blocks cascades and loops).
-        if ($target->type === QodeType::Redirect) {
-            return null;
-        }
-
-        if (! $target->isActive()) {
+        // Target must not redirect (blocks cascades and loops).
+        if ($this->isRedirecting($target)) {
             return null;
         }
 

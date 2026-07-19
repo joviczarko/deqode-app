@@ -28,15 +28,17 @@ class CreateQode extends CreateRecord
             ]);
         }
 
-        $type = QodeType::from($data['type'] ?? 'redirect');
-        $defaults = app(ModuleRegistry::class)->get($type)->defaultSettings();
+        $type = QodeType::from($data['type'] ?? QodeType::Content->value);
+        $redirect = app(RedirectDestination::class);
+        $defaults = array_replace_recursive(
+            $redirect->defaults(),
+            app(ModuleRegistry::class)->get($type)->defaultSettings(),
+        );
+
         $data['domain_id'] = $domain->id;
         $data['tenant_id'] = auth()->user()?->tenant_id;
-        $data['settings'] = array_merge($defaults, $data['settings'] ?? []);
-
-        if ($type === QodeType::Redirect) {
-            $data['settings'] = app(RedirectDestination::class)->validateForSave(null, $data['settings']);
-        }
+        $data['settings'] = array_replace_recursive($defaults, $data['settings'] ?? []);
+        $data['settings']['redirect'] = $redirect->validateForSave(null, $data['settings']['redirect'] ?? []);
 
         return $data;
     }

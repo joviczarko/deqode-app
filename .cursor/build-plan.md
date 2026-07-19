@@ -128,17 +128,16 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Work
 
-1. Settings: external URL **or** another non-redirect Qode; always **302** (no 301).
-2. Bare redirect response; enqueue visit stub if visits not ready.
-3. Default/recommended type in create flow.
-4. Type switch **preserves** settings (Content can be reactivated after a Redirect campaign).
-5. No redirect→redirect (blocks cascades and loops).
+1. Redirect is a **per-Qode setting** (not a module type): `Don't redirect` / External URL / Another Qode; always **302**.
+2. Bare redirect response when enabled; otherwise render the module. Visit stub on resolve.
+3. Module type defaults to Content; module settings remain editable while redirecting.
+4. No redirect→redirect (blocks cascades and loops).
 
 ### Exit criteria
 
-* [x] Scan → 302 to configured URL.
-* [x] Pest: redirect target + status.
-* [x] Internal Qode target + cascade/loop blocked; settings survive type switch.
+* [x] Scan → 302 to configured URL when redirect enabled.
+* [x] Pest: redirect target + status; module content preserved when redirect is on/off.
+* [x] Internal Qode target + cascade/loop blocked.
 
 ---
 

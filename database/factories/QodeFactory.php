@@ -8,6 +8,7 @@ use App\Models\Collection;
 use App\Models\Domain;
 use App\Models\Qode;
 use App\Models\Tenant;
+use App\QodeModules\RedirectDestination;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -29,12 +30,16 @@ class QodeFactory extends Factory
             ])->id,
             'domain_id' => Domain::factory(),
             'name' => fake()->words(3, true),
-            'type' => QodeType::Redirect,
+            'type' => QodeType::Content,
             'status' => QodeStatus::Active,
             'settings' => [
-                'destination' => 'url',
-                'url' => 'https://example.com',
-                'target_qode_id' => null,
+                'redirect' => [
+                    'to' => RedirectDestination::MODE_NONE,
+                    'url' => 'https://example.com',
+                    'target_qode_id' => null,
+                ],
+                'title' => 'Untitled',
+                'body' => '',
             ],
         ];
     }

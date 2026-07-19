@@ -9,12 +9,14 @@ use App\Models\Domain;
 use App\Models\Qode;
 use App\Models\Tenant;
 use App\QodeModules\ModuleRegistry;
+use App\QodeModules\RedirectDestination;
 use Illuminate\Validation\ValidationException;
 
 class CreateQode
 {
     public function __construct(
         private ModuleRegistry $modules,
+        private RedirectDestination $redirect,
     ) {}
 
     /**
@@ -47,7 +49,11 @@ class CreateQode
             'name' => $data['name'],
             'type' => $type,
             'status' => QodeStatus::from($data['status'] ?? QodeStatus::Active->value),
-            'settings' => $data['settings'] ?? $module->defaultSettings(),
+            'settings' => array_replace_recursive(
+                $this->redirect->defaults(),
+                $module->defaultSettings(),
+                $data['settings'] ?? [],
+            ),
         ]);
     }
 }

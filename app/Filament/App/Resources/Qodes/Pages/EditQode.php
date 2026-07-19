@@ -35,15 +35,15 @@ class EditQode extends EditRecord
         /** @var Qode $record */
         $record = $this->getRecord();
         $newType = QodeType::from($data['type']);
-        $defaults = app(ModuleRegistry::class)->get($newType)->defaultSettings();
+        $redirect = app(RedirectDestination::class);
+        $defaults = array_replace_recursive(
+            $redirect->defaults(),
+            app(ModuleRegistry::class)->get($newType)->defaultSettings(),
+        );
         $incoming = is_array($data['settings'] ?? null) ? $data['settings'] : [];
 
-        // Keep prior module settings (e.g. Content body) when switching to Redirect.
-        $data['settings'] = array_merge($defaults, $record->settings ?? [], $incoming);
-
-        if ($newType === QodeType::Redirect) {
-            $data['settings'] = app(RedirectDestination::class)->validateForSave($record, $data['settings']);
-        }
+        $data['settings'] = array_replace_recursive($defaults, $record->settings ?? [], $incoming);
+        $data['settings']['redirect'] = $redirect->validateForSave($record, $data['settings']['redirect'] ?? []);
 
         return $data;
     }

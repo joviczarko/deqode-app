@@ -8,6 +8,7 @@ use App\Enums\QodeStatus;
 use App\Models\Domain;
 use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
+use App\QodeModules\RedirectDestination;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,6 +19,7 @@ class QodeResolveController extends Controller
         string $slug,
         ModuleRegistry $registry,
         RecordVisit $recordVisit,
+        RedirectDestination $redirect,
     ): Response {
         $domain = $this->resolveDomain($request);
 
@@ -35,6 +37,12 @@ class QodeResolveController extends Controller
         }
 
         $recordVisit->handle($qode, $request);
+
+        $redirectUrl = $redirect->urlOrNull($qode);
+
+        if ($redirectUrl !== null) {
+            return redirect()->away($redirectUrl, 302);
+        }
 
         return $registry->get($qode->type)->render($qode, $request);
     }

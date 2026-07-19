@@ -8,9 +8,9 @@ use App\Models\Collection;
 use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
 use App\QodeModules\RedirectDestination;
-use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
@@ -35,62 +35,58 @@ class QodeForm
                     ->preload()
                     ->searchable(),
                 Select::make('type')
+                    ->label('Module')
                     ->options(fn (ModuleRegistry $registry): array => $registry->options())
                     ->required()
                     ->live()
-                    ->default(QodeType::Redirect->value)
-                    ->helperText('Switching type keeps prior module settings so you can reactivate Content later.'),
+                    ->default(QodeType::Content->value)
+                    ->helperText('Module content stays available even while a redirect is active.'),
                 Select::make('status')
                     ->options(collect(QodeStatus::cases())->mapWithKeys(
                         fn (QodeStatus $status) => [$status->value => ucfirst($status->value)]
                     ))
                     ->required()
                     ->default(QodeStatus::Active->value),
-                Radio::make('settings.destination')
-                    ->label('Redirect to')
-                    ->options([
-                        RedirectDestination::MODE_URL => 'External URL',
-                        RedirectDestination::MODE_QODE => 'Another Qode',
+                Section::make('Redirect')
+                    ->description('Optional campaign override. Scans use a bare 302 and skip the module page.')
+                    ->schema([
+                        Select::make('settings.redirect.to')
+                            ->label('Redirect to')
+                            ->options(fn (RedirectDestination $redirect): array => $redirect->modeOptions())
+                            ->required()
+                            ->live()
+                            ->native(false)
+                            ->default(RedirectDestination::MODE_NONE),
+                        TextInput::make('settings.redirect.url')
+                            ->label('Destination URL')
+                            ->url()
+                            ->required(fn (Get $get): bool => $get('settings.redirect.to') === RedirectDestination::MODE_URL)
+                            ->default('https://example.com')
+                            ->visible(fn (Get $get): bool => $get('settings.redirect.to') === RedirectDestination::MODE_URL)
+                            ->dehydrated(fn (Get $get): bool => $get('settings.redirect.to') === RedirectDestination::MODE_URL),
+                        Select::make('settings.redirect.target_qode_id')
+                            ->label('Destination Qode')
+                            ->searchable()
+                            ->helperText('Only Qodes that are not themselves redirecting.')
+                            ->getSearchResultsUsing(function (string $search, ?Qode $record, RedirectDestination $destination): array {
+                                $tenantId = (int) ($record?->tenant_id ?? auth()->user()?->tenant_id ?? 0);
+
+                                return $destination->searchableOptions(
+                                    $tenantId,
+                                    $record?->id,
+                                    $search,
+                                );
+                            })
+                            ->getOptionLabelUsing(function (mixed $value, ?Qode $record, RedirectDestination $destination): ?string {
+                                $tenantId = (int) ($record?->tenant_id ?? auth()->user()?->tenant_id ?? 0);
+
+                                return $destination->optionLabel($tenantId, $record?->id, $value);
+                            })
+                            ->required(fn (Get $get): bool => $get('settings.redirect.to') === RedirectDestination::MODE_QODE)
+                            ->visible(fn (Get $get): bool => $get('settings.redirect.to') === RedirectDestination::MODE_QODE)
+                            ->dehydrated(fn (Get $get): bool => $get('settings.redirect.to') === RedirectDestination::MODE_QODE),
                     ])
-                    ->default(RedirectDestination::MODE_URL)
-                    ->live()
-                    ->required(fn (Get $get): bool => $get('type') === QodeType::Redirect->value)
-                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Redirect->value)
-                    ->dehydrated(fn (Get $get): bool => $get('type') === QodeType::Redirect->value),
-                TextInput::make('settings.url')
-                    ->label('Destination URL')
-                    ->url()
-                    ->required(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
-                        && $get('settings.destination') === RedirectDestination::MODE_URL)
-                    ->default('https://example.com')
-                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
-                        && $get('settings.destination') === RedirectDestination::MODE_URL)
-                    ->dehydrated(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
-                        && $get('settings.destination') === RedirectDestination::MODE_URL),
-                Select::make('settings.target_qode_id')
-                    ->label('Destination Qode')
-                    ->searchable()
-                    ->helperText('Only non-redirect Qodes. Redirect-to-redirect is blocked to prevent cascades and loops.')
-                    ->getSearchResultsUsing(function (string $search, ?Qode $record, RedirectDestination $destination): array {
-                        $tenantId = (int) ($record?->tenant_id ?? auth()->user()?->tenant_id ?? 0);
-
-                        return $destination->searchableOptions(
-                            $tenantId,
-                            $record?->id,
-                            $search,
-                        );
-                    })
-                    ->getOptionLabelUsing(function (mixed $value, ?Qode $record, RedirectDestination $destination): ?string {
-                        $tenantId = (int) ($record?->tenant_id ?? auth()->user()?->tenant_id ?? 0);
-
-                        return $destination->optionLabel($tenantId, $record?->id, $value);
-                    })
-                    ->required(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
-                        && $get('settings.destination') === RedirectDestination::MODE_QODE)
-                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
-                        && $get('settings.destination') === RedirectDestination::MODE_QODE)
-                    ->dehydrated(fn (Get $get): bool => $get('type') === QodeType::Redirect->value
-                        && $get('settings.destination') === RedirectDestination::MODE_QODE),
+                    ->columns(1),
                 TextInput::make('slug')
                     ->disabled()
                     ->dehydrated(false)

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('redirects an active qode to the configured url with 302', function () {
+it('renders content when redirect is off', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -25,19 +25,47 @@ it('redirects an active qode to the configured url with 302', function () {
     $qode = app(CreateQode::class)->handle($tenant, [
         'name' => 'Bottle label',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
+        'type' => QodeType::Content->value,
         'settings' => [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://instagram.com/deqode',
-            'target_qode_id' => null,
+            'title' => 'About this bottle',
+            'body' => '<p>Story</p>',
         ],
     ]);
 
-    expect($qode->slug)->toBe(app(SqidsEncoder::class)->encode($qode->id));
+    expect($qode->slug)->toBe(app(SqidsEncoder::class)->encode($qode->id))
+        ->and($qode->settings['redirect']['to'])->toBe(RedirectDestination::MODE_NONE);
+
+    $this->get('/r/'.$qode->slug)
+        ->assertSuccessful()
+        ->assertSee('About this bottle', false)
+        ->assertSee('Story', false);
+});
+
+it('redirects to an external url with 302 when redirect is enabled', function () {
+    Domain::factory()->defaultPlatform()->create();
+
+    $tenant = Tenant::factory()->create();
+    $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
+
+    $qode = app(CreateQode::class)->handle($tenant, [
+        'name' => 'Campaign',
+        'collection_id' => $collection->id,
+        'type' => QodeType::Content->value,
+        'settings' => [
+            'title' => 'Hidden while redirecting',
+            'body' => '<p>Still stored</p>',
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://instagram.com/deqode',
+                'target_qode_id' => null,
+            ],
+        ],
+    ]);
 
     $this->get('/r/'.$qode->slug)
         ->assertRedirect('https://instagram.com/deqode')
-        ->assertStatus(302);
+        ->assertStatus(302)
+        ->assertDontSee('Hidden while redirecting', false);
 });
 
 it('returns 404 for unknown slug', function () {
@@ -88,7 +116,7 @@ it('renders content qodes through the pico wrapper stack', function () {
         ->assertSee('Ingredients and story.', false);
 });
 
-it('keeps redirect qodes bare without the html layout', function () {
+it('keeps redirects bare without the html layout', function () {
     Domain::factory()->defaultPlatform()->create();
 
     $tenant = Tenant::factory()->create();
@@ -97,10 +125,11 @@ it('keeps redirect qodes bare without the html layout', function () {
     $qode = app(CreateQode::class)->handle($tenant, [
         'name' => 'Campaign redirect',
         'collection_id' => $collection->id,
-        'type' => QodeType::Redirect->value,
         'settings' => [
-            'destination' => RedirectDestination::MODE_URL,
-            'url' => 'https://example.com/campaign',
+            'redirect' => [
+                'to' => RedirectDestination::MODE_URL,
+                'url' => 'https://example.com/campaign',
+            ],
         ],
     ]);
 
