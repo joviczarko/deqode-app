@@ -1,165 +1,257 @@
 # DeQode — Phased Build Execution Plan
 
-**Source of truth:** [`.cursor/project.md`](project.md) v2.1  
-**Status:** Ready for confirmation before coding  
-**Rule:** Do not start Layer N+1 until Layer N meets its exit criteria.
+**Source of truth:** [project.md](project.md) v2.3  
+**Backlog:** [backlog.md](backlog.md)  
+**Status:** Locked — ready for Layer 0a execution  
+**Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
-This plan turns the locked Vision & Spec into an implementation sequence. No application code should start until this plan is explicitly confirmed.
+Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
 
 ---
 
 ## Preconditions
 
-* Fresh Laravel app already installed in this repo (Filament not yet installed).
-* Spec decisions locked: SMB positioning, hybrid Qode model, Collections + Categories, host split (`deqode.me` / `app.deqode.me` / `qr.deqode.me`), layered V1.
-* Scrapbook is **not** a build checklist.
-* Do **not** deploy the SaaS as a subdirectory under a WordPress marketing site.
+* Laravel app present; Filament not yet installed.
+* Local: single host **`deqode.test`** (Herd).
+* Prod hosts: `app.deqode.me` + `qr.deqode.me` (marketing separate).
+* Scrapbook is not a checklist.
 
 ---
 
-## Layer 0 — Platform foundation
+## Chunk 0a — Panels, tenancy, signup
 
-**Goal:** Multi-tenant SaaS shell with signup, billing, and two Filament panels on `app.deqode.me` — before any Qode exists.
+**Goal:** Two Filament panels + hand-rolled tenancy + Signup Intent + default Collection + Free/Trial attach. No billing UI yet beyond “on trial.”
 
 ### Work
 
-1. Install Filament; create **Super Admin** and **Tenant** panels (configured for `app.deqode.me` in production; local Herd host for dev).
-2. Tenancy model: `tenants`, user↔tenant membership, tenant scoping helpers/middleware.
-3. `signup_intents` + verification flow → create tenant + **default Collection** + user; generated password mail (optional own password).
-4. Packages, subscriptions, invoices, payments, `tenant_feature_overrides` (include domain-related flags: `custom_domains`, `custom_slugs`, `platform_domain_choice`).
-5. `PaymentGatewayInterface` + **DemoGateway** (Success / Fail / Cancel); checkout + upgrade UI.
-6. Trial modes configurable via package/settings.
-7. Superadmin resources: tenants, packages, subscriptions, invoices, payments, signup intents, impersonation, overrides.
+1. Add root `update.sh` (from Dropstix; PIN `1205`; PHP `/RunCloud/Packages/php84rc/bin/php`; strip Nightwatch unless added later).
+2. Install Filament; create **Super Admin** and **Tenant** panels (completely separate).
+3. `tenants` with auto-increment starting at **4000**; users ↔ tenants; tenant scoping.
+4. On tenant create: default Collection “General.”
+5. Signup Intent → verify → tenant + user + generated password mail (optional own password) + **auto Free/Trial** subscription row (even if packages UI is thin).
+6. Seed superadmin: `admin@seed.test` / `password`.
+7. Config for local vs prod URL hosts / scan path prefix (`/r/{slug}` locally).
 
 ### Exit criteria
 
-* [ ] Visitor can complete Signup Intent → verified tenant user in tenant panel; default Collection exists.
-* [ ] Demo checkout creates subscription + invoice; Fail path is handled.
+* [ ] Login as seeded superadmin on `deqode.test`.
+* [ ] Complete signup intent → tenant id ≥ 4000, default Collection, Free/Trial attached.
+* [ ] Tenant panel loads for that user; cannot see other tenants’ data (smoke test).
+* [ ] Pest: signup intent happy path; tenant isolation smoke.
+
+---
+
+## Chunk 0b — Packages, Demo billing, overrides
+
+**Goal:** Configurable packages, Demo gateway checkout, invoices, superadmin tenant billing tabs + overrides.
+
+### Work
+
+1. Packages + quotas/feature flags (incl. domain flags for later).
+2. Subscriptions, invoices, payments, payment logs.
+3. `PaymentGatewayInterface` + DemoGateway (Success / Fail / Cancel).
+4. Tenant billing pages: plan, demo checkout, invoices.
+5. Superadmin: tenant detail tabs — subscription, invoices, package/quota/price overrides; impersonation.
+6. No Stripe.
+
+### Exit criteria
+
+* [ ] Demo Success creates invoice + active paid subscription; Fail is handled.
 * [ ] Superadmin can override quota and price for one tenant.
-* [ ] Pest tests cover signup intent, demo payment success/fail, tenant isolation smoke.
-
-### Suggested first packages (seed)
-
-Define at least: Free/Trial, Starter, Professional — with Qode count, scan quota, storage, module flags, custom domain / custom slug flags.
+* [ ] Pest: demo success/fail; override applies to effective limits.
 
 ---
 
-## Layer 1 — Qode core
+## Chunk 1a — Domains, Qodes shell, resolve, QR
 
-**Goal:** Shared Qode identity, Collections/Categories, domain+slug resolve on `qr.deqode.me`, files, QR download — modules can plug in.
+**Goal:** Publish a Qode stub and open it on local `/r/{slug}`; download QR.
 
 ### Work
 
-1. Migrations: `collections`, `categories`, `category_qode`, `domains`, `qodes`, `files`.
-2. Seed platform domain `qr.deqode.me` (`type=platform`, `is_default=true`).
-3. `QodeType` enum + **module registry** (config/provider): register type, schema, Filament form fragment, renderer binding, feature gate.
-4. Tenant UI: Collections CRUD (protect default); Categories CRUD; Qodes list/create (type picker, collection, categories); edit shell (name, collection, categories, status, domain/slug fields); type switch with wipe confirmation.
-5. On Qode create: assign default Collection; set `domain_id` to default platform domain; set `slug` = generated `public_id`.
-6. Public resolve (scan host only): Host → `domains` row → `{slug}` → Qode → module renderer (stub OK for types not yet built). Flat path: `https://qr.deqode.me/{slug}` — **no** `/q/` prefix on the scan host.
-7. Scaffold stubs: custom domain model fields + resolve branch (verification UI may be Layer 3); do not wire scan host to `app.deqode.me`.
-8. QR image generation + download (SVG/PNG) encoding the full public URL for the Qode’s domain+slug.
-9. File library upload to S3-compatible disk; attach by id from modules later.
-10. Session cookies: host-only on app host (never `Domain=.deqode.me`).
+1. Migrations: `domains`, `qodes` (minimal), seed platform domain for local.
+2. Module registry skeleton; Qode types include Redirect + Content (Content may stub).
+3. Tenant: create/edit Qode (name, collection, type, status); type switch wipe warning.
+4. Default `slug` via **Sqids** (`sqids/sqids`): encode `id` after insert; `minLength` ~8; alphabet from `config/deqode.php` / env — never rotate after print.
+5. Resolve by `(domain_id, slug)` only (supports future vanity); local `deqode.test/r/{slug}`; prod host→domain→slug.
+6. `simplesoftwareio/simple-qrcode` download (styled enough for V1).
+7. URL builder config-driven.
 
 ### Exit criteria
 
-* [ ] Create Collection / Category + Qode (even with stub type) in tenant panel; new Qodes land in default Collection.
-* [ ] `qr.deqode.me/{slug}` (or local scan host equivalent) resolves Qode; inactive Qodes do not serve content.
-* [ ] Unknown host or unknown slug → 404; slug unique per domain.
-* [ ] QR download encodes correct URL.
-* [ ] Type switch clears `settings` (and related type data) after confirm.
-* [ ] Tests: resolve happy path, soft-deleted/paused, wrong domain/slug 404, cross-tenant isolation.
+* [ ] Create Qode → `slug` is Sqids-derived; open `/r/{slug}` (stub OK).
+* [ ] Re-encoding same `id` with same config yields the same default slug.
+* [ ] Inactive/unknown slug → 404.
+* [ ] QR encodes correct local URL.
+* [ ] Pest: resolve + 404 cases; Sqids round-trip for default slug.
 
 ---
 
-## Layer 2 — Modules
+## Chunk 1b — Collections, Categories, simple media (S3)
 
-**Goal:** Ship the five customer-facing tools as registry modules.
-
-Implement in this order (fastest value → richer UI):
-
-### 2a Redirect
-
-* Settings: URL + status code.
-* Renderer: redirect response; still record visit (Layer 3 may land in parallel — at minimum enqueue visit stub).
-
-### 2b File download
-
-* Settings: `file_id`, title, button label.
-* Renderer: download page or direct download; uses Files library.
-
-### 2c Link hub
-
-* Settings: title + repeater links.
-* Public template: simple branded link list.
-
-### 2d Landing (simple blocks)
-
-* Block types V1: rich text, image (`file_id`), button, optional download button.
-* Filament repeater/builder for blocks; public Blade composition.
-* Not a full page builder.
-
-### 2e Form + Leads
-
-* Settings: title, fields schema, success message.
-* `leads` table with `payload` JSON (+ optional email/name columns).
-* Public form submit → validate against schema → store lead.
-* Tenant **Leads** resource: list, view payload, CSV export.
-
-### Exit criteria
-
-* [ ] Each module creatable, editable, publicly reachable on scan host.
-* [ ] Disabled module (package flag) hidden from create; gated consistently.
-* [ ] Form submit creates lead visible in tenant panel; export works.
-* [ ] Feature tests per module (settings validation + public behavior).
-
----
-
-## Layer 3 — Analytics & domains polish
-
-**Goal:** First-party scan analytics, external tag IDs, custom domains, vanity slugs, domain selector.
+**Goal:** Organize Qodes; upload files to S3 under tenant-prefixed paths.
 
 ### Work
 
-1. `visits` table + recorder (prefer queued job from public resolve); store `collection_id` when present.
-2. Tenant Analytics pages: totals, series, geo/device breakdowns, top Qodes / Collections; respect scan quotas for soft warnings/hard limits per package rules.
-3. Tenant settings: GA4 / Meta Pixel IDs; optional per-Qode override; inject on HTML renderers.
-4. Custom domains: verification (DNS TXT or similar), status transitions, resolve via same host→domain→slug path; flat `https://{custom}/{slug}`.
-5. Package-gated vanity `slug` editing + choosing among allowed platform/custom domains.
-6. Superadmin: manage platform domains (add future short domains without code changes).
-7. Document RunCloud/TLS expectations for `app.`, `qr.`, and custom hosts.
+1. Collections CRUD (protect default); Categories + pivot; filters on Qode list.
+2. `files` table + Filament upload to **S3**; path `{tenant_id}/{uuid-v7}-...`.
+3. Simple Files list in tenant panel (not WP media browser).
+4. Document that empty AWS env fails loudly until configured.
 
 ### Exit criteria
 
-* [ ] Scan creates visit; dashboard numbers move.
-* [ ] External IDs appear in public HTML when configured.
-* [ ] Verified custom domain serves the Qode at `https://{custom}/{slug}`.
-* [ ] Vanity slug rejected when package disallows; uniqueness enforced per domain.
-* [ ] Tests: visit recorded; unknown host rejected; domain→slug mapping; platform domain seed.
+* [ ] Assign Collection/Categories on Qode; filter works.
+* [ ] Upload appears in Files; object key is tenant-prefixed.
+* [ ] Pest: category attach; file record created (fake S3 disk in tests).
 
 ---
 
-## Cross-cutting (every layer)
+## Chunk 1c — Public render stack (wrapper → template → content)
 
-* Tenant scoping on all Eloquent queries / Filament resources.
-* Policies for Qode, File, Lead, Collection, Category, Domain (custom).
-* Pint on dirty PHP; Pest feature tests for each exit criterion.
-* Prefer Actions for: CompleteSignup, RecordVisit, CaptureLead, SwitchQodeType, VerifyCustomDomain, AssignQodeDomain.
-* No OCR, DPP, Zapier, SSO, or Post-MVP items from the spec.
+**Goal:** HTML modules render through wrapper + default Pico template.
+
+### Work
+
+1. `layouts/wrapper.blade.php`, `templates/default.blade.php` (Pico CSS), slot for module view.
+2. Wire Content module (or stub) through stack; Redirect never uses it.
+3. Placeholder hooks for external analytics tags.
+
+### Exit criteria
+
+* [ ] Content-type Qode returns HTML with Pico; wrapper present.
+* [ ] Redirect path still bare (when Redirect ships) — no layout.
 
 ---
 
-## Suggested milestone demos
+## Chunk 2a — Redirect (built-in)
 
-| Milestone | Demo |
+**Goal:** Strategic dynamic QR redirect.
+
+### Work
+
+1. Settings: URL + status code (302 default).
+2. Bare redirect response; enqueue visit stub if visits not ready.
+3. Default/recommended type in create flow.
+
+### Exit criteria
+
+* [ ] Scan → 302 to configured URL.
+* [ ] Pest: redirect target + status.
+
+---
+
+## Chunk 2b — Content (simple WYSIWYG)
+
+**Goal:** Minimal landing body via Filament rich editor.
+
+### Work
+
+1. Settings: title + HTML/body from Filament rich editor.
+2. Public module view inside default template.
+3. Optional: insert image from media by id later if trivial — otherwise backlog.
+
+### Exit criteria
+
+* [ ] Edit body in Filament; public page shows it.
+* [ ] Pest: content visible on resolve.
+
+---
+
+## Chunk 2c — Link hub
+
+### Work
+
+Repeater links; public list in default template.
+
+### Exit criteria
+
+* [ ] Links render and navigate.
+* [ ] Pest: settings validation + public list.
+
+---
+
+## Chunk 2d — Form + Leads
+
+### Work
+
+1. Form field schema in settings; public form via POST/fetch (no Livewire).
+2. `leads` + payload JSON; tenant Leads resource (view, export CSV).
+
+### Exit criteria
+
+* [ ] Submit creates lead; visible/exportable in panel.
+* [ ] Pest: validation + store.
+
+---
+
+## Chunk 2e — File download Qode
+
+### Work
+
+Settings reference `file_id`; public download page or direct download.
+
+### Exit criteria
+
+* [ ] Authenticated-to-file via Qode (public link) serves from S3 appropriately.
+* [ ] Pest: download authorized for active Qode.
+
+---
+
+## Chunk 3a — Visits & analytics UI
+
+### Work
+
+1. `visits` recorder (queued) on resolve.
+2. Tenant analytics: totals, series, device/geo basics, top Qodes.
+3. Soft/hard scan quota hooks per package.
+
+### Exit criteria
+
+* [ ] Scan increments stats.
+* [ ] Pest: visit row created.
+
+---
+
+## Chunk 3b — External pixels + custom domains + vanity
+
+### Work
+
+1. Tenant GA4/Meta IDs; inject on HTML only.
+2. Custom domain model + **DNS TXT verification** before verified; resolve on Host.
+3. Package-gated vanity slugs + domain selector.
+4. Superadmin platform domains list.
+
+### Exit criteria
+
+* [ ] Unverified custom host does not serve.
+* [ ] Verified + TXT path works (feature test can fake DNS).
+* [ ] Vanity rejected when flag off.
+* [ ] Pest: hijack case — second tenant cannot claim same hostname.
+
+---
+
+## Cross-cutting
+
+* Tenant scoping + policies on every resource.
+* Actions: CompleteSignup, RecordVisit, CaptureLead, SwitchQodeType, VerifyCustomDomain, …
+* Pint dirty; Pest per chunk.
+* No backlog items unless explicitly pulled.
+
+---
+
+## Milestone demos
+
+| After | Demo |
 | --- | --- |
-| End of Layer 0 | Sign up on app host → demo pay → default Collection → superadmin override |
-| End of Layer 1 | Create Qode → open `qr…/{slug}` stub → download QR |
-| End of Layer 2 | Packaging story: landing + form lead + PDF download + redirect promo |
-| End of Layer 3 | Scan report + custom domain + vanity slug |
+| 0a | Signup + panels + tenant ≥ 4000 |
+| 0b | Demo pay + override |
+| 1a | QR → `/r/{slug}` |
+| 1b–1c | Media upload + Pico content shell |
+| 2a–2b | Redirect + Content |
+| 2c–2e | Link hub, form lead, file download |
+| 3a–3b | Analytics + custom domain TXT |
 
 ---
 
-## After confirmation
+## Execution note for agents
 
-When this build plan is approved, execution starts at **Layer 0** only (Filament + tenancy + Signup Intent + billing shell + default Collection). Module work does not begin until Layer 1 exit criteria pass.
+Start at **Chunk 0a** only. Attach [project.md](project.md), this file, [postulates.md](postulates.md), and [backlog.md](backlog.md). Do not implement backlog items.

@@ -2,8 +2,9 @@
 
 ## Product Vision & Technical Specification
 
-**Version:** 2.1  
-**Status:** Locked for V1 scaffolding
+**Version:** 2.3  
+**Status:** Locked for V1 execution  
+**Related:** [build-plan.md](build-plan.md) · [backlog.md](backlog.md) · [postulates.md](postulates.md)
 
 ---
 
@@ -25,60 +26,56 @@ The strongest story — and the one product marketing should lead with — is **
 * Later point it at a product story, ingredients page, manual PDF, warranty/feedback form, promo, or seasonal campaign.
 * Measure scans and collect first-party leads without juggling agencies, random short-link tools, and five hostings.
 
-That narrative makes the product concrete. The product itself stays broader: any SMB that runs offline→online campaigns (events, posters, menus, packaging, retail) should feel at home.
-
 ## What DeQode is not (V1)
 
-* Not an Uniqode-style enterprise suite (SSO mega-nav, digital business cards as the hero, compliance theater first).
-* Not “you can do anything” — a small set of **compartmentalized tools**, done clearly.
-* Not a full page builder or WordPress clone.
-* Not a Laravel app nested under a marketing WordPress `/q/` subdirectory (see Domains).
+* Not an Uniqode-style enterprise suite.
+* Not “you can do anything” — a small set of compartmentalized tools, done clearly.
+* Not a full page builder, WordPress clone, or full WP-style media browser (simple media library only).
+* Not a Laravel app nested under a marketing WordPress `/q/` subdirectory.
 
 ## Tone
 
-Clear, inviting, package-buyable. A marketing manager should understand the product in one sitting and start a trial without a demo call.
+Clear, inviting, package-buyable.
 
 ## Guiding product question
 
 > Does this help an SMB run and measure QR marketing in one practical place — especially behind printed packaging and labels?
 
-If yes, it belongs. If it only serves enterprise procurement checklists, it waits.
-
 ---
 
 # 2. Principles
 
-These apply unless the product explicitly overrides them. They align with project postulates (see [`.cursor/postulates.md`](postulates.md)).
+See also [postulates.md](postulates.md).
 
-## Filament first
+## KISS
 
-Use Filament components for tenant and superadmin UI whenever possible.
+Prefer simple, deletable solutions over clever abstractions. Avoid leftovers that make refactors hell. Build only what the current chunk’s exit criteria require.
 
-Custom Blade and Alpine.js only when Filament cannot deliver the experience — especially **public-facing Qode renderers**, which are not Filament screens.
+## Filament first (admin)
+
+Use Filament for tenant and superadmin UI. Public scan pages are **not** Filament / Livewire — Blade (+ minimal JS/fetch for forms).
 
 ## Clean business logic
 
-Thin controllers/Livewire actions. Workflows live in Action/Service classes. Models represent data, not entire application flows.
+Thin HTTP layer. Actions/Services for workflows. Models represent data.
 
-## Multi-tenant first
+## Multi-tenant first (hand-rolled)
 
-Every feature assumes tenant isolation. Nothing accidentally exposes another tenant’s data.
+`tenant_id` on tenant-owned tables + global scopes / policies. No Stancl/Spatie tenancy package unless pain forces it later.
+
+**Tenant primary keys** start at **4000** (migration auto-increment seed) so early customers never see “tenant #1.”
 
 ## Package-driven, override-friendly
 
-Packages define default quotas and feature flags. Individual tenants may override limits and pricing without inventing one-off package SKUs.
+Packages define defaults. Superadmin can override limits and pricing per tenant.
 
 ## Payment abstraction
 
-One payment interface; gateways are swappable via configuration (including a Demo gateway for Success / Fail / Cancel).
-
-## Prefer clarity over infinite configurability
-
-Packages, quotas, and overrides are enough. Do not build an unbounded “everything is a setting” surface that hurts approachability.
+`PaymentGatewayInterface` + **DemoGateway** only in V1 (no Stripe/Cashier yet).
 
 ## OCR
 
-OCR adapters from other products are **out of scope** for DeQode. Do not design for them.
+Out of scope for DeQode.
 
 ---
 
@@ -87,542 +84,239 @@ OCR adapters from other products are **out of scope** for DeQode. Do not design 
 | Area | Choice |
 | --- | --- |
 | Backend | Laravel (PHP latest stable) |
-| Admin | Filament (tenant panel + superadmin panel) on `app.deqode.me` |
-| Database | MySQL |
-| Hosting | RunCloud (separate sites/hosts — not a WP subdirectory app) |
-| Storage | S3-compatible |
+| Admin | Two **separate** Filament panels on app host |
+| Public CSS | Pico CSS (or similarly small, modern, mobile-first) — not Bootstrap |
+| Database | MySQL (prod); local may use MySQL via Herd |
+| Hosting | RunCloud |
+| Storage | **AWS S3** from day one (`FILESYSTEM_DISK=s3`) |
+| QR codes | `simplesoftwareio/simple-qrcode` (styling matters for clients) |
+| Public Qode codes | **Sqids** (`sqids/sqids`) — default `slug` from numeric `id` |
 | Queue | Laravel Queues |
 | Mail | Laravel Mail |
 | Cache | Redis (recommended) |
-| Deployment | Git-based via RunCloud |
+| Deploy | Git + root [`update.sh`](../update.sh) (Dropstix-style; PIN `1205`; PHP `php84rc`) |
 
 ---
 
 # 4. Qode Module Architecture (core R&D)
 
-Creating “another QR platform” is trivial. **Getting scaffolding right** — one shared identity, common analytics, pluggable type UI, flexible settings, and typed received data — is the real product innovation.
-
 ## Mental model
 
-* **Qode** = the product unit = billable unit = analytics unit = the thing the customer manages.
-* A Qode has **one active type** at a time (redirect, landing, link hub, form, file download).
-* Type may be **switched** with an explicit wipe warning (settings and type-specific received data for that Qode are replaced/cleared). Quota remains **number of Qodes**, not pages vs forms.
+* **Qode** = billable unit = analytics unit.
+* One active **type** at a time; switch allowed with wipe warning.
+* Quota = **Qode count**.
 
-Customers care about “this QR does X,” not about separate menus for Pages, Forms, and Redirects.
+## Built-in vs registry modules
 
-## Hybrid data model (chosen)
+| Module | Role |
+| --- | --- |
+| **Redirect** | **Built-in / strategic.** Dynamic QR → bare **302/301** to destination (Instagram, campaign URL, etc.). No HTML wrapper. Always available as a first-class type. |
+| **Content** | Registry module. Simple page: Filament rich editor / WYSIWYG body. Smoke-test for wrapper→template→content. Keep minimal. |
+| Link hub, Form, File download | Registry modules; ship in later chunks. |
+
+Do not overbuild block builders in V1 Content — rich text (+ optional later image from media) is enough for the first content smoke test.
+
+## Hybrid data model
 
 ```
 Tenant
-  ├── Collections (required folder; default "General" on signup)
-  │     └── Qodes  (one common row)
-  │           ├── settings (JSON, validated per type)
-  │           ├── visits   (shared analytics)
-  │           ├── leads    (form submissions → payload JSON)
-  │           └── files    (referenced from settings / library)
-  └── Categories (optional many-to-many taxonomy for filtering)
+  ├── Collections (default "General" on signup)
+  │     └── Qodes
+  │           ├── settings (JSON)
+  │           ├── visits
+  │           ├── leads
+  │           └── media refs (file ids)
+  └── Categories ↔ Qodes
 ```
-
-### Collections vs Categories
-
-| Concept | Role |
-| --- | --- |
-| **Collection** | Organizational folder. Every tenant gets a default Collection (WordPress “Uncategorized” pattern). New Qodes are assigned there automatically. Required on every Qode. |
-| **Category** | Optional multi-assign taxonomy for filtering large libraries (campaign, product line, region, etc.). |
-
-Quota unit remains **Qodes**, not collections or categories.
-
-### Why hybrid (not WordPress EAV meta)
-
-| Approach | Verdict |
-| --- | --- |
-| Pure `qodes_meta` key/value | Flexible but awkward for Filament and analytics queries |
-| Pure JSON blob only | Fine for settings; weak for querying visits/leads/files |
-| **Hybrid (chosen)** | One `qodes` row + validated `settings` JSON + real tables for visits, leads, files |
-
-No `qodes_meta` table in V1 unless a module later proves JSON insufficient for its configuration.
 
 ## Module contract
 
-Each Qode type is a **module** that can be enabled or disabled (config / service provider registration is enough for V1).
-
-Every module must provide:
-
-| Concern | Responsibility |
-| --- | --- |
-| Type key + label | e.g. `redirect`, `landing`, `link_hub`, `form`, `file_download` |
-| Settings schema | Validation + DTO/array shape for `qodes.settings` |
-| Filament UI | Form components for editing that type |
-| Public renderer | Blade/Livewire (or redirect response) for scans |
-| Feature / package gate | Enabled flag and any extra quota keys |
-| Optional hooks | e.g. on submit, on type switch wipe |
-
-Shared platform owns: identity, QR image, public URL resolve (domain + slug), visit recording, billing quotas on Qode count, file library, Collections/Categories.
-
-## Enable / disable
-
-Modules register in a central registry (config array or provider). Disabled modules:
-
-* Do not appear in “Create Qode” type picker.
-* Prefer **hide from create** + **still render existing** until admin migrates.
+Type key, settings schema, Filament UI fragment, public renderer (or redirect response), package gate.
 
 ---
 
-# 5. Data Model
+# 5. Public render stack
 
-## Core tables
+HTML-capable modules only (not Redirect):
+
+```
+layouts/wrapper.blade.php     ← analytics tags, future chrome before/after
+  └── templates/{name}.blade.php   ← V1: only "default" (Pico CSS + CSS variables)
+        └── modules/{type}.blade.php   ← module body
+```
+
+* **No Livewire** on the scan host.
+* Forms: classic POST or `fetch` to a public endpoint — keep simple.
+* Redirect: **bare 302**, skip wrapper/template entirely.
+
+---
+
+# 6. Data Model (essentials)
 
 ### `tenants`
 
-Organization account: name, slug, status, billing fields, external analytics settings (JSON), timestamps.
+IDs start at **4000**. Name, slug, status, analytics settings JSON, timestamps.
 
-### `users` + tenant membership
+### `collections` / `categories` / `category_qode`
 
-Users belong to tenants (pivot or `tenant_id` + roles). V1: basic team members; no deep RBAC matrix.
-
-### `collections`
-
-Organizational folders: `tenant_id`, name, `is_default` (boolean), timestamps.
-
-On tenant creation, seed one default Collection (e.g. “General”). Every Qode has a required `collection_id`.
-
-### `categories`
-
-Tenant taxonomy: `tenant_id`, name, slug, timestamps.
-
-### `category_qode` (pivot)
-
-Many-to-many between categories and Qodes for filtering.
+Collection required; default Collection on signup. Categories optional M2M for filtering.
 
 ### `domains`
 
-Unified domain registry (scaffold from day one):
-
-| Column | Purpose |
-| --- | --- |
-| `id` | PK |
-| `hostname` | e.g. `qr.deqode.me`, `qr.brand.com`, future `dq.ly` |
-| `type` | `platform` \| `custom` |
-| `tenant_id` | Null for platform domains; set for tenant custom domains |
-| `status` | pending / verified / disabled |
-| `is_default` | Default platform domain for new Qodes |
-| timestamps | |
-
-* Seed **`qr.deqode.me`** as the default platform domain.
-* Later platform short domains (Bitly-style) are additional `type=platform` rows — they appear in the per-Qode domain selector without being “client domains.”
-* Custom domains are `type=custom` + verified for a tenant.
-
-Slug uniqueness is **per domain**: unique index `(domain_id, slug)` on Qodes.
+`hostname`, `type` (`platform`|`custom`), `tenant_id` nullable, `status`, `is_default`.  
+Seed default platform domain from config (prod: `qr.deqode.me`).
 
 ### `qodes`
 
-| Column | Purpose |
-| --- | --- |
-| `id` | Internal PK |
-| `tenant_id` | Isolation |
-| `collection_id` | Required Collection |
-| `domain_id` | Which hostname this Qode is published on |
-| `slug` | Path segment on that domain (default = generated public id; vanity when package allows) |
-| `name` | Human label |
-| `public_id` | Stable opaque id (UUID or Hashid) used as default slug — never sequential DB ids |
-| `type` | Module type key |
-| `status` | draft / active / paused / archived |
-| `settings` | JSON — type configuration |
-| timestamps + soft deletes | |
+`tenant_id`, `collection_id`, `domain_id`, `slug`, `type`, `status`, `settings` JSON.  
+Unique `(domain_id, slug)`.
 
-Owns: identity, quota counting, QR asset association, analytics join key.
+No separate `public_id` column required: the **default `slug` is the public code**.
 
-Public URL shape: `https://{domain.hostname}/{slug}`  
-Default: `https://qr.deqode.me/{public_id}`
+### Default public codes (Sqids)
 
-### `files`
+* Package: [`sqids/sqids`](https://sqids.org/php) (successor to Hashids).
+* On create: insert Qode → encode numeric `id` → set `slug` (unless a package-gated vanity slug is supplied).
+* Resolve **always** by stored `(domain_id, slug)` — do not rely on decode-as-lookup (vanity slugs are not Sqids).
+* Regeneration: re-encode `id` with the **same** alphabet + `minLength` → same default code if the row was corrupted.
+* Config (lock forever after any customer prints codes):
 
-Tenant media library: storage path, mime, size, name, `tenant_id`. Qodes reference files by id inside `settings` (never “own” a file exclusively).
+```
+config/deqode.php → sqids.alphabet (custom shuffle via env)
+config/deqode.php → sqids.min_length (e.g. 8)
+```
 
-### `visits`
+* Sqids is **not** encryption; still enforce tenant/authorization. Never expose raw sequential ids in public URLs.
+* Vanity: custom `slug` string when package allows; not regenerable from `id`.
 
-One row per scan/hit:
+### `files` (media library — simple)
 
-* `tenant_id`, `qode_id`, optional `collection_id`
-* timestamp, IP hash (privacy-aware), country/city if available
-* device, browser, OS, language
-* referrer, UTM fields, user agent summary
-* optional `is_unique` / visitor fingerprint strategy (document implementation choice at build time)
+Not a full WP media browser. Upload + list + attach by id.
 
-Indexed for tenant dashboards and quota (monthly scans).
+* Store on **S3**.
+* Path prefix: `{tenant_id}/{uuid-v7}-...` (or hashed tenant segment) so **all tenant objects can be deleted** when a subscription is closed.
+* Soft metadata in DB: disk, path, mime, size, original name, `tenant_id`.
 
-### `leads` (form submissions)
+Image pipeline (Lambda resize, 4K cap, versioning, delete originals after N months) → [backlog.md](backlog.md).
 
-* `tenant_id`, `qode_id`
-* `payload` JSON — field values as submitted (schema differs per form)
-* optional denormalized `email`, `name` for list/search when present
-* timestamps
+### `visits` / `leads`
 
-Different forms → different fields; do not force one rigid lead schema in V1.
+As in v2.1 — platform analytics source of truth; leads with `payload` JSON.
 
-### Supporting SaaS tables (conceptual)
+### SaaS tables
 
 `signup_intents`, `packages`, `subscriptions`, `invoices`, `payments`, `payment_logs`, `tenant_feature_overrides`.
 
-Exact migrations follow this spec at build time.
+---
 
-## Example `settings` shapes (illustrative)
+# 7. Analytics
 
-**Redirect**
-
-```json
-{
-  "url": "https://example.com/campaign",
-  "status_code": 302
-}
-```
-
-**Landing**
-
-```json
-{
-  "title": "Summer Sparkling",
-  "blocks": [
-    { "type": "rich_text", "body": "..." },
-    { "type": "image", "file_id": 12 },
-    { "type": "button", "label": "Buy", "url": "https://..." }
-  ]
-}
-```
-
-**Link hub**
-
-```json
-{
-  "title": "Find us",
-  "links": [
-    { "label": "Shop", "url": "https://..." },
-    { "label": "Instagram", "url": "https://..." }
-  ]
-}
-```
-
-**Form**
-
-```json
-{
-  "title": "Warranty registration",
-  "fields": [
-    { "name": "email", "type": "email", "required": true },
-    { "name": "serial", "type": "text", "required": true }
-  ],
-  "success_message": "Thanks — we received your registration."
-}
-```
-
-**File download**
-
-```json
-{
-  "title": "Product manual",
-  "file_id": 44,
-  "button_label": "Download PDF"
-}
-```
-
-Each shape is validated by its module schema before save.
+* **Layer A:** `visits` table (quotas, in-app reports).
+* **Layer B:** optional tenant GA4 / Meta Pixel IDs injected on HTML pages only.
 
 ---
 
-# 6. Analytics Model
+# 8. Hosts & local development
 
-Two layers. Do not conflate them.
-
-## Layer A — Platform analytics (source of truth)
-
-* Every public hit records a `visits` row with `tenant_id` + `qode_id`.
-* No separate “DeQode analytics ID” is required for internal reporting: **tenant + Qode id / public_id are the join keys**.
-* In-app reports: totals, uniques (best-effort), daily/weekly series, countries, devices, browsers, top Qodes, top Collections, referrers, form conversion (visits → leads) where applicable.
-* Quotas and billing for “monthly scans” use this table — **never** third-party analytics.
-
-## Layer B — Tenant external analytics IDs (optional)
-
-Per tenant (settings), optionally overridden per Qode:
-
-* GA4 Measurement ID
-* Meta Pixel ID
-* Future: other tags
-
-When set, public page renderers inject the tags. Redirect-only Qodes may skip page tags (no HTML); document that limitation.
-
-This is the “analytics ID per tenant” that matters for customers who already live in Google Analytics. It is **additive**, not a replacement for Layer A.
-
----
-
-# 7. Multi-tenancy, Domains & URL Scheme
-
-## Hierarchy
-
-```
-Tenant
-  → Collections → Qodes → (module settings + visits/leads/files)
-  → Categories ↔ Qodes (filtering)
-  → Domains (platform + custom) → Qode.domain_id + slug
-```
-
-## Host architecture (locked — do not nest app under marketing `/q/`)
-
-Printed scan URLs are hard to change. Host roles are permanent product decisions.
+## Production
 
 | Host | Role |
 | --- | --- |
-| `deqode.me` | Marketing only (WordPress or static — **separate** deploy) |
-| `app.deqode.me` | SaaS app: login, Filament tenant + superadmin (`app.deqode.me/login`) |
-| `qr.deqode.me` | Public Qode resolve **only**: `https://qr.deqode.me/{slug}` |
+| `deqode.me` | Marketing (separate) |
+| `app.deqode.me` | Both Filament panels + signup/login |
+| `qr.deqode.me` | Scan resolve only: `/{slug}` |
 
-**Why not `deqode.me/q/...` as a RunCloud subdirectory under WordPress**
+Cookies: **host-only** on `app.` (never `Domain=.deqode.me`).
 
-* Scan slugs and app routes collide (`/q/login` vs `/q/{hash}`).
-* Same origin as marketing weakens isolation if a public Qode page is abused.
-* Filament/Vite under a subdirectory is ongoing operational friction.
+## Local (Herd) — single host
 
-**Why `qr.` not `q.`:** Slightly longer, clearer brand signal on print; scan traffic stays on its own origin.
+**`http://deqode.test` only** (no `app.` / `qr.` aliases required for V1 local).
 
-**Do not** alias `qr.deqode.me` to `app.deqode.me/q/`. Keep the scan host resolve-only.
+* App / Filament / signup: normal panel paths on `deqode.test`.
+* Public Qode resolve: path prefix on same host, e.g. **`/r/{slug}`** (or config `SCAN_PATH_PREFIX=r`), so scans never collide with Filament routes.
+* Platform domain seed for local: `deqode.test` with path-aware URL builder (`http://deqode.test/r/{slug}`).
+* Production URL builder: `https://{hostname}/{slug}` (no `/r/` on dedicated scan host).
 
-### Isolation
+Config-driven URL generation so one codebase serves both.
 
-User-generated content on `qr.deqode.me` is a **different origin** from `deqode.me` and `app.deqode.me`. Use **host-only session cookies** on `app.` (do not set `Domain=.deqode.me`) so dashboard sessions are not shared with the scan host.
+## Custom domains
 
-### Default public URL
+* CNAME customer host → scan edge (`qr.deqode.me`).
+* **DNS TXT (or equivalent) required** before `verified` / before serving (anti-hijack).
+* Superadmin may manually attach a domain for early demos without full self-serve UI.
+* Unique hostname globally; resolve: Host → domain → slug → Qode.
 
-`https://qr.deqode.me/{slug}`
-
-Where `slug` defaults to the generated `public_id`. Package-gated vanity slugs allowed later/same V1 scaffold.
-
-### Custom domains
-
-* Tenant verifies a hostname (e.g. `go.brand.com`) → `domains` row `type=custom`.
-* Same resolve: `https://go.brand.com/{slug}` (flat path — no `/q/` prefix required on dedicated scan hosts).
-* TLS via RunCloud / platform conventions (document at build time).
-* Full tenant UI for DNS verification may be thin in early V1; **models + resolve middleware must exist**.
-
-### Platform-wide domains (future-proof now)
-
-When a short domain is purchased (e.g. Bitly-style), add it as another `type=platform` domain. It appears in the per-Qode domain selector alongside the tenant’s custom domains. Slugs remain unique per domain.
-
-Package flags related to domains:
-
-* `custom_domains` — attach verified client hostnames
-* `custom_slugs` — Bitly-style vanity path on an allowed domain
-* `platform_domain_choice` — pick among platform hosts when more than one exists
-
-## Resolve flow
-
-```
-Scan / request
-  → resolve Host header → domains row (platform or verified custom)
-  → resolve {slug} unique to that domain → Qode
-  → authorize active + module enabled + tenant OK
-  → record visit (async/queue preferred)
-  → module renderer (redirect or HTML)
-```
+Package flags: `custom_domains`, `custom_slugs`, `platform_domain_choice`.
 
 ---
 
-# 8. Auth & Signup
+# 9. Auth & Signup
 
-## Signup Intent (required)
-
-Registrations begin as a **Signup Intent**, not an immediate user+tenant create.
-
-Flow:
-
-```
-Visitor → Signup Intent → Email verification → Tenant creation (+ default Collection) → User creation
-```
-
-Store on intent: email, IP, country, browser, referrer, campaign, timestamps, verification state.
-
-Benefits: spam control, abandoned-signup analytics, marketing follow-up, verified email before tenant exists.
-
-Signup / login UX lives on **`app.deqode.me`**, not on the scan host.
-
-## Passwords
-
-Default: system generates a secure password and emails it.  
-Optional: “I want to choose my own password.”
-
-## Auth support (V1)
-
-* Email + password
-* Password reset
-
-Future: magic links, social login, 2FA.
+* Signup Intent → verify → tenant (id ≥ 4000) + default Collection + user + **auto-attach Free/Trial** package (no card).
+* Generated password by default; optional own password.
+* Seeded superadmin: **`admin@seed.test` / `password`** (local/dev; change in production).
 
 ---
 
-# 9. Billing, Packages & Overrides
+# 10. Billing (V1)
 
-Billing is a **core** feature, not an add-on.
-
-## Packages
-
-Define defaults such as:
-
-* Qodes count
-* Collections count (soft limit; default Collection always exists)
-* Storage
-* Monthly scans
-* Team members
-* Custom domains (count / enabled)
-* Custom slugs / platform domain choice
-* Module flags: analytics, forms/CRM, landing, link hub, file download, API (future), etc.
-
-Each capability is **enabled / disabled** or a **quota**.
-
-## Tenant overrides
-
-From superadmin, independently override:
-
-* limits / feature flags
-* pricing for that tenant’s package
-* trial / expiration when needed
-
-No need to spawn custom package SKUs for one-off deals.
-
-## Trial & checkout
-
-Support configurable trial modes (free trial, no trial, paid immediately, invite-only) without code forks.
-
-## Payments
-
-`PaymentGatewayInterface` with implementations such as Stripe / Paddle / PayPal later, and **DemoGateway** (Success / Fail / Cancel) for local and staging flows.
-
-Every successful charge produces invoice + payment records and billing history. Tenant UI: upgrade, invoices, payment history. Failed payment retry logic as appropriate for the chosen gateway.
-
-Proration can be Post-MVP if needed; upgrades/downgrades must still be usable in V1.
+* Own tables + Demo gateway (Success / Fail / Cancel).
+* No Stripe in V1.
+* Packages, trial, invoices, upgrade UI, per-tenant limit + price overrides.
+* Superadmin tenant view: tabs for subscription, invoices, package/quota overrides — **not** a copy of the tenant panel.
 
 ---
 
-# 10. Administration
+# 11. Administration
 
-Two separate Filament panels on **`app.deqode.me`**.
+Two **completely separate** Filament panels (different purpose, not shared IA):
 
-## Super Admin
+### Super Admin
 
-* Tenants, users, subscriptions, packages
-* Invoices, payments, payment logs
-* Signup intents
-* Feature / price overrides
-* Platform domains (seed/manage `qr.deqode.me` and future platform hosts)
-* Storage / scan usage
-* Impersonation
-* System health / high-level analytics
+Tenants, packages, subscriptions, invoices, payments, signup intents, overrides, platform domains, impersonation. Entering a tenant focuses on **account/billing/quotas**, not editing that tenant’s Qode content (use impersonation to see tenant UI).
 
-## Tenant panel (information architecture)
+### Tenant panel
 
-Keep the mental model simple:
-
-* **Dashboard**
-* **Qodes** (create → pick type → edit; domain/slug; QR download; filter by Collection/Category)
-* **Collections**
-* **Categories**
-* **Leads** (from form Qodes)
-* **Files**
-* **Analytics**
-* **Billing** (plan, checkout, invoices)
-* **Settings** (team, custom domains, external analytics IDs)
-
-No separate top-level “Pages” / “Forms” / “Redirects” menus — those are Qode types.
+Dashboard, Qodes, Collections, Categories, Leads, Files (simple), Analytics, Billing, Settings.
 
 ---
 
-# 11. V1 Scope (layered)
+# 12. V1 scope
 
-Everything below is **in V1**. Build in layers so the platform stays coherent.
+Execution order and exit criteria live in [build-plan.md](build-plan.md) (finer chunks). Summary:
 
-## Layer 0 — Platform foundation
+* Platform: panels, tenancy, signup, Free/Trial, Demo billing.
+* Qode core: collections/categories, domains, resolve, **Sqids default slugs**, QR (simple-qrcode), simple media on S3, render wrapper/template.
+* Modules: Redirect (built-in, bare 302), Content (WYSIWYG), then Link hub, Form+Leads, File download.
+* Analytics + custom domain TXT + vanity slugs.
 
-* Multi-tenant Filament panels on `app.deqode.me` (Super Admin + Tenant)
-* Signup Intent → verify → tenant + default Collection + user
-* Generated passwords (optional own password)
-* Packages, quotas, per-tenant overrides (limits + price)
-* Payment abstraction + Demo gateway + invoices / trial / checkout
-* Superadmin: tenants, subscriptions, impersonation
-
-## Layer 1 — Qode core
-
-* Collections, Categories (+ pivot), Qodes, module registry
-* `domains` table seeded with `qr.deqode.me`; Qode `domain_id` + `slug`
-* Public resolver on scan host: `qr.deqode.me/{slug}` (middleware: host → domain → slug)
-* Domain scaffold stubs for custom + future platform domains (even if tenant UI is minimal)
-* QR image generation/download
-* Type switch with wipe warning
-* File library (S3-compatible)
-
-## Layer 2 — Modules
-
-* Redirect / short link
-* Landing / content page (**simple block builder**, not a full page builder)
-* Link-in-bio
-* Forms + lead list (view payload, export) — micro CRM
-* File download Qode (and/or download as a landing block)
-
-## Layer 3 — Analytics & domains polish
-
-* Visit tracking + basic reports (totals, unique best-effort, geo, device, top Qodes)
-* Tenant external analytics IDs (GA4 / Meta Pixel)
-* Custom domain verification flow (DNS) + routing
-* Package-gated vanity slugs + domain selector UX
+Deferred ideas: [backlog.md](backlog.md).
 
 ## V1 success criteria
 
-A customer can:
-
-1. Sign up (Signup Intent) on `app.deqode.me` and enter trial or checkout via Demo gateway  
-2. Land in default Collection; create Categories; create a Qode of each enabled type  
-3. Download a QR that hits `https://qr.deqode.me/{slug}`  
-4. Change destination/content without reprinting  
-5. See scans in Analytics; see form submissions under Leads  
-6. Optionally attach a custom domain / vanity slug (per package) and external analytics IDs  
-7. Superadmin can override quotas/pricing and impersonate for support  
-
----
-
-# 12. Post-MVP
-
-Explicitly **out of V1** (do not expand Layer 0–3 into these):
-
-* Digital Product Passport / GS1 Digital Link
-* Product authentication / fraud detection
-* NFC as a first-class channel
-* A/B testing, funnels, heatmaps
-* AI-assisted content generation
-* Zapier / Make / deep CRM sync
-* Full white-label beyond custom / platform domains
-* Deep team permissions / SSO
-* Digital business cards as a product line
-* Marketing automation / email campaigns
-* Advanced page builder / multilingual content engine
-
-Revisit only when V1 success criteria are met in production use.
+1. Sign up → Free/Trial; use Demo checkout for paid path.  
+2. Default Collection; create Qode (Redirect and Content at minimum).  
+3. QR downloads; local scan via `deqode.test/r/{slug}`; prod via `qr.deqode.me/{slug}`.  
+4. Change destination/content without reprinting.  
+5. Visits + leads visible when those chunks ship.  
+6. Custom domain TXT + vanity when domain chunk ships.  
+7. Superadmin overrides + impersonation.
 
 ---
 
 # 13. Coding Standards
 
-* Convention over cleverness.
-* Thin HTTP layer; Actions/Services for workflows.
-* Policies for authorization; tenant scoping on every query path.
-* Enums for Qode types, statuses, domain types, etc. — no magic strings.
-* DTOs / validated array shapes for module settings.
-* Events for significant actions (subscription created, Qode published, payment received, lead captured).
-* Public slugs / ids: UUID or Hashids — never expose sequential database IDs on public URLs.
+* KISS; convention over cleverness.
+* Policies + tenant scoping everywhere.
+* Enums; validated settings shapes; Actions for workflows.
+* Events for subscription, publish, payment, lead.
+* Never expose sequential DB ids on public URLs — default codes via **Sqids**; resolve by stored `slug`.
 * Soft deletes where recovery matters.
-* Audit important admin/billing actions.
-* Readable, testable code over premature abstraction.
-* Pest feature tests for signup, billing demo flow, domain+slug resolve, visit recording, form submit.
+* Pest feature tests per chunk exit criteria.
+* Pint on dirty PHP.
 
 ---
 
 # 14. Long-term direction
 
-Once the command center is loved by SMBs, deeper packaging/product experiences (manuals, warranty, richer product pages, eventually DPP-class compliance) become natural extensions of the **same Qode module system** — not a second product.
-
-Until then: ship the layered V1, keep modules compartmentalized, and measure whether customers actually run their QR marketing here instead of across scattered tools.
+Become the practical OS for printed QR marketing for SMBs; deepen packaging experiences via the same module system once the command center is loved.
