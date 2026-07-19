@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PackageSeeder::class,
             SuperAdminSeeder::class,
+            DomainSeeder::class,
         ]);
     }
 }

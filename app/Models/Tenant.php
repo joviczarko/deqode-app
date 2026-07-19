@@ -41,6 +41,11 @@ class Tenant extends Model
         return $this->hasMany(Collection::class);
     }
 
+    public function qodes(): HasMany
+    {
+        return $this->hasMany(Qode::class);
+    }
+
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
@@ -49,5 +54,20 @@ class Tenant extends Model
     public function currentSubscription(): HasOne
     {
         return $this->hasOne(Subscription::class)->latestOfMany();
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function featureOverride(): HasOne
+    {
+        return $this->hasOne(TenantFeatureOverride::class);
     }
 }

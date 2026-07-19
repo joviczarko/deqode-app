@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 0a complete — ready for Chunk 0b  
+**Status:** Chunk 1a complete — ready for Chunk 1b  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -56,9 +56,9 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Exit criteria
 
-* [ ] Demo Success creates invoice + active paid subscription; Fail is handled.
-* [ ] Superadmin can override quota and price for one tenant.
-* [ ] Pest: demo success/fail; override applies to effective limits.
+* [x] Demo Success creates invoice + active paid subscription; Fail is handled.
+* [x] Superadmin can override quota and price for one tenant.
+* [x] Pest: demo success/fail; override applies to effective limits.
 
 ---
 
@@ -78,11 +78,11 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Exit criteria
 
-* [ ] Create Qode → `slug` is Sqids-derived; open `/r/{slug}` (stub OK).
-* [ ] Re-encoding same `id` with same config yields the same default slug.
-* [ ] Inactive/unknown slug → 404.
-* [ ] QR encodes correct local URL.
-* [ ] Pest: resolve + 404 cases; Sqids round-trip for default slug.
+* [x] Create Qode → `slug` is Sqids-derived; open `/r/{slug}` (stub OK).
+* [x] Re-encoding same `id` with same config yields the same default slug.
+* [x] Inactive/unknown slug → 404.
+* [x] QR encodes correct local URL.
+* [x] Pest: resolve + 404 cases; Sqids round-trip for default slug.
 
 ---
 
