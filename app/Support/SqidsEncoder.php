@@ -12,7 +12,7 @@ class SqidsEncoder
     {
         $this->sqids = new Sqids(
             alphabet: $alphabet ?? (string) config('deqode.sqids.alphabet'),
-            minLength: $minLength ?? (int) config('deqode.sqids.min_length', 8),
+            minLength: $minLength ?? (int) config('deqode.sqids.min_length', 3),
         );
     }
 

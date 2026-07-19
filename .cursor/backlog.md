@@ -41,6 +41,10 @@ Deferred ideas. **Do not implement** unless explicitly pulled into the build pla
 * [ ] Extra platform short domains in selector (Bitly-style purchase).
 * [ ] Apex domain support (ALIAS/ANAME) docs + support path.
 
+## Public codes (Sqids)
+
+* [ ] **Decide before any customer prints codes:** keep lowercase+digits alphabet (`yn1g3rvoejitkqum0fdbc5x78lz6hs92p4aw`, minLength 3) vs letters-only, and/or drop ambiguous chars (`0`/`o`, `1`/`l`). Changing alphabet after print breaks regeneration and support expectations.
+
 ## Platform
 
 * [ ] Team RBAC beyond basic members; SSO.

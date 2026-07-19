@@ -27,8 +27,9 @@ return [
     */
 
     'sqids' => [
-        'alphabet' => env('DEQODE_SQIDS_ALPHABET', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-        'min_length' => (int) env('DEQODE_SQIDS_MIN_LENGTH', 8),
+        // Locked once any customer prints codes — lowercase + digits only, shuffled.
+        'alphabet' => env('DEQODE_SQIDS_ALPHABET', 'yn1g3rvoejitkqum0fdbc5x78lz6hs92p4aw'),
+        'min_length' => (int) env('DEQODE_SQIDS_MIN_LENGTH', 3),
     ],
 
 ];

@@ -18,11 +18,11 @@ $scanPrefix = trim((string) config('deqode.scan_path_prefix', 'r'), '/');
 
 if ($scanPrefix !== '') {
     Route::get('/'.$scanPrefix.'/{slug}', QodeResolveController::class)
-        ->where('slug', '[A-Za-z0-9]+')
+        ->where('slug', '[a-z0-9]+')
         ->name('qodes.resolve');
 } else {
     Route::get('/{slug}', QodeResolveController::class)
-        ->where('slug', '[A-Za-z0-9]{4,}')
+        ->where('slug', '[a-z0-9]{3,}')
         ->name('qodes.resolve');
 }
 
