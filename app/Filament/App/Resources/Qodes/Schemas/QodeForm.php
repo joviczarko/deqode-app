@@ -8,6 +8,7 @@ use App\Models\Collection;
 use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
 use App\QodeModules\RedirectDestination;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -47,6 +48,26 @@ class QodeForm
                     ))
                     ->required()
                     ->default(QodeStatus::Active->value),
+                Section::make('Content')
+                    ->description('Landing page shown when redirect is off.')
+                    ->schema([
+                        TextInput::make('settings.title')
+                            ->label('Title')
+                            ->required()
+                            ->maxLength(255)
+                            ->default('Untitled'),
+                        RichEditor::make('settings.body')
+                            ->label('Body')
+                            ->toolbarButtons([
+                                ['bold', 'italic', 'underline', 'strike', 'link'],
+                                ['h2', 'h3'],
+                                ['bulletList', 'orderedList'],
+                                ['undo', 'redo'],
+                            ])
+                            ->fileAttachments(false)
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Get $get): bool => $get('type') === QodeType::Content->value),
                 Section::make('Redirect')
                     ->description('Optional campaign override. Scans use a bare 302 and skip the module page.')
                     ->schema([

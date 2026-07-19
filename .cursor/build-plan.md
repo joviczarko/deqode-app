@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 2a complete — ready for Chunk 2b  
+**Status:** Chunk 2b complete — ready for Chunk 2c  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -153,8 +153,8 @@ Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog 
 
 ### Exit criteria
 
-* [ ] Edit body in Filament; public page shows it.
-* [ ] Pest: content visible on resolve.
+* [x] Edit body in Filament; public page shows it.
+* [x] Pest: content visible on resolve.
 
 ---
 
