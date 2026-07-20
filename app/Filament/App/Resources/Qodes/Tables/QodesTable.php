@@ -49,7 +49,7 @@ class QodesTable
                     ->openUrlInNewTab(),
                 Action::make('qr')
                     ->label('QR')
-                    ->url(fn ($record): string => route('qodes.qr', $record))
+                    ->url(fn ($record): string => route('qodes.qr', ['qode' => $record, 'format' => 'svg']))
                     ->openUrlInNewTab(),
                 EditAction::make(),
             ])

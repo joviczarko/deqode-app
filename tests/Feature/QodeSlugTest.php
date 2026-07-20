@@ -58,7 +58,12 @@ it('downloads a qr svg for the tenant owner', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('qodes.qr', $qode))
+        ->get(route('qodes.qr', ['qode' => $qode, 'format' => 'svg']))
         ->assertSuccessful()
         ->assertHeader('content-type', 'image/svg+xml');
+
+    $this->actingAs($user)
+        ->get(route('qodes.qr', ['qode' => $qode, 'format' => 'png']))
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'image/png');
 });

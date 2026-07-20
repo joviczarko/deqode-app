@@ -10,18 +10,28 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class QodeQrCodeController extends Controller
 {
-    public function __invoke(Qode $qode, QodeUrlBuilder $urls): Response
+    /**
+     * @var array<string, string>
+     */
+    private const CONTENT_TYPES = [
+        'svg' => 'image/svg+xml',
+        'png' => 'image/png',
+    ];
+
+    public function __invoke(Qode $qode, string $format, QodeUrlBuilder $urls): Response
     {
         Gate::authorize('view', $qode);
 
-        $svg = QrCode::format('svg')
+        abort_unless(array_key_exists($format, self::CONTENT_TYPES), 404);
+
+        $payload = QrCode::format($format)
             ->size(512)
             ->margin(1)
             ->generate($urls->forQode($qode));
 
-        return response($svg, 200, [
-            'Content-Type' => 'image/svg+xml',
-            'Content-Disposition' => 'attachment; filename="qode-'.$qode->slug.'.svg"',
+        return response($payload, 200, [
+            'Content-Type' => self::CONTENT_TYPES[$format],
+            'Content-Disposition' => 'attachment; filename="qode-'.$qode->slug.'.'.$format.'"',
         ]);
     }
 }

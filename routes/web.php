@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/leave-impersonation', [ImpersonationController::class, 'stop'])
         ->name('admin.leave-impersonation');
 
-    Route::get('/qodes/{qode}/qr.svg', QodeQrCodeController::class)
+    Route::get('/qodes/{qode}/qr/{format}', QodeQrCodeController::class)
+        ->whereIn('format', ['svg', 'png'])
         ->name('qodes.qr');
 });
