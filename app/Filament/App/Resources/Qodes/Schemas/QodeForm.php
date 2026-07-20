@@ -9,15 +9,20 @@ use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
 use App\QodeModules\RedirectDestination;
 use App\Support\QodeUrlBuilder;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Icons\Heroicon;
 use Livewire\Component as LivewireComponent;
 
 class QodeForm
@@ -152,14 +157,29 @@ class QodeForm
                                         ? $livewire->getRecord()
                                         : null;
 
-                                    $qode = $record instanceof Qode ? $record : null;
-
                                     return [
-                                        'qrUrl' => self::qrUrl($qode, 'svg'),
-                                        'qrSvgUrl' => self::qrUrl($qode, 'svg'),
-                                        'qrPngUrl' => self::qrUrl($qode, 'png'),
+                                        'qrUrl' => self::qrUrl(
+                                            $record instanceof Qode ? $record : null,
+                                            'svg',
+                                        ),
                                     ];
                                 }),
+                            Actions::make([
+                                ActionGroup::make([
+                                    Action::make('downloadQrSvg')
+                                        ->label('SVG')
+                                        ->url(fn (?Qode $record): ?string => self::qrUrl($record, 'svg'))
+                                        ->openUrlInNewTab(),
+                                    Action::make('downloadQrPng')
+                                        ->label('PNG')
+                                        ->url(fn (?Qode $record): ?string => self::qrUrl($record, 'png'))
+                                        ->openUrlInNewTab(),
+                                ])
+                                    ->label('Download')
+                                    ->icon(Heroicon::OutlinedArrowDownTray)
+                                    ->button()
+                                    ->color('gray'),
+                            ])->alignment(Alignment::Center),
                         ])
                         ->visibleOn('edit'),
                 ])->columnSpan([
