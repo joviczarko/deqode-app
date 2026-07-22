@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 2e complete — ready for Chunk 3a  
+**Status:** Chunk 3a complete — ready for Chunk 3b  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -208,8 +208,8 @@ Settings reference `file_id`; public download page or direct download.
 
 ### Exit criteria
 
-* [ ] Scan increments stats.
-* [ ] Pest: visit row created.
+* [x] Scan increments stats.
+* [x] Pest: visit row created.
 
 ---
 

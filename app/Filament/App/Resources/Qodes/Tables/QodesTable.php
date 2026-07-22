@@ -22,6 +22,10 @@ class QodesTable
                 TextColumn::make('type')->badge(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('collection.name')->label('Collection'),
+                TextColumn::make('visits_count')
+                    ->counts('visits')
+                    ->label('Scans')
+                    ->sortable(),
                 TextColumn::make('categories.name')
                     ->label('Categories')
                     ->badge()

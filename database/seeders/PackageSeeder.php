@@ -21,6 +21,7 @@ class PackageSeeder extends Seeder
                 'price_monthly_cents' => 0,
                 'quotas' => [
                     'max_qodes' => 10,
+                    'max_scans' => 1000,
                 ],
                 'features' => [
                     'custom_domains' => false,
@@ -41,6 +42,7 @@ class PackageSeeder extends Seeder
                 'price_monthly_cents' => 1900,
                 'quotas' => [
                     'max_qodes' => 50,
+                    'max_scans' => 10000,
                 ],
                 'features' => [
                     'custom_domains' => false,
@@ -61,6 +63,7 @@ class PackageSeeder extends Seeder
                 'price_monthly_cents' => 4900,
                 'quotas' => [
                     'max_qodes' => 250,
+                    'max_scans' => 100000,
                 ],
                 'features' => [
                     'custom_domains' => true,

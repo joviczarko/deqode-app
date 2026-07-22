@@ -26,7 +26,7 @@ class PackageFactory extends Factory
             'is_active' => true,
             'trial_days' => 0,
             'price_monthly_cents' => 1900,
-            'quotas' => ['max_qodes' => 10],
+            'quotas' => ['max_qodes' => 10, 'max_scans' => 1000],
             'features' => [
                 'custom_domains' => false,
                 'custom_slugs' => false,
@@ -44,7 +44,7 @@ class PackageFactory extends Factory
             'is_free' => true,
             'trial_days' => 14,
             'price_monthly_cents' => 0,
-            'quotas' => ['max_qodes' => 10],
+            'quotas' => ['max_qodes' => 10, 'max_scans' => 1000],
             'features' => [
                 'custom_domains' => false,
                 'custom_slugs' => false,
@@ -62,7 +62,7 @@ class PackageFactory extends Factory
             'is_free' => false,
             'trial_days' => 0,
             'price_monthly_cents' => 1900,
-            'quotas' => ['max_qodes' => 50],
+            'quotas' => ['max_qodes' => 50, 'max_scans' => 10000],
             'features' => [
                 'custom_domains' => false,
                 'custom_slugs' => false,

@@ -78,6 +78,11 @@ class Qode extends Model
         return $this->hasMany(Lead::class);
     }
 
+    public function visits(): HasMany
+    {
+        return $this->hasMany(Visit::class);
+    }
+
     public function isActive(): bool
     {
         return $this->status === QodeStatus::Active;

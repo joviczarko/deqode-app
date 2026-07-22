@@ -41,6 +41,11 @@ return [
             'type' => 'integer',
             'default' => 10,
         ],
+        'max_scans' => [
+            'label' => 'Max scans',
+            'type' => 'integer',
+            'default' => 1000,
+        ],
     ],
 
     /*
