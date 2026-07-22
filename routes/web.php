@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Auth\SignupIntentController;
 use App\Http\Controllers\Billing\DemoCheckoutController;
 use App\Http\Controllers\CaptureLeadController;
+use App\Http\Controllers\QodeFileDownloadController;
 use App\Http\Controllers\QodeQrCodeController;
 use App\Http\Controllers\QodeResolveController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,10 @@ if ($scanPrefix !== '') {
     Route::post('/'.$scanPrefix.'/{slug}/leads', CaptureLeadController::class)
         ->where('slug', '[a-z0-9]+')
         ->name('qodes.leads.store');
+
+    Route::get('/'.$scanPrefix.'/{slug}/download', QodeFileDownloadController::class)
+        ->where('slug', '[a-z0-9]+')
+        ->name('qodes.download');
 } else {
     Route::get('/{slug}', QodeResolveController::class)
         ->where('slug', '[a-z0-9]{3,}')
@@ -33,6 +38,10 @@ if ($scanPrefix !== '') {
     Route::post('/{slug}/leads', CaptureLeadController::class)
         ->where('slug', '[a-z0-9]{3,}')
         ->name('qodes.leads.store');
+
+    Route::get('/{slug}/download', QodeFileDownloadController::class)
+        ->where('slug', '[a-z0-9]{3,}')
+        ->name('qodes.download');
 }
 
 Route::middleware('auth')->group(function () {

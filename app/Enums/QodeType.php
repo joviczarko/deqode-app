@@ -7,6 +7,7 @@ enum QodeType: string
     case Content = 'content';
     case LinkHub = 'link_hub';
     case Form = 'form';
+    case FileDownload = 'file_download';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum QodeType: string
             self::Content => 'Content',
             self::LinkHub => 'Link hub',
             self::Form => 'Form',
+            self::FileDownload => 'File download',
         };
     }
 }

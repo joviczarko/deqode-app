@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 2d complete — ready for Chunk 2e  
+**Status:** Chunk 2e complete — ready for Chunk 3a  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -193,8 +193,8 @@ Settings reference `file_id`; public download page or direct download.
 
 ### Exit criteria
 
-* [ ] Authenticated-to-file via Qode (public link) serves from S3 appropriately.
-* [ ] Pest: download authorized for active Qode.
+* [x] Authenticated-to-file via Qode (public link) serves from S3 appropriately.
+* [x] Pest: download authorized for active Qode.
 
 ---
 
