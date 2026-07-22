@@ -2,9 +2,13 @@
 
 namespace App\Filament\App\Resources\Qodes\Schemas;
 
+use App\Billing\EffectiveEntitlements;
+use App\Enums\DomainStatus;
+use App\Enums\DomainType;
 use App\Enums\QodeStatus;
 use App\Enums\QodeType;
 use App\Models\Collection;
+use App\Models\Domain;
 use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
 use App\QodeModules\RedirectDestination;
@@ -21,6 +25,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Component as LivewireComponent;
 
 class QodeForm
@@ -69,6 +74,21 @@ class QodeForm
                                 ->native(false)
                                 ->default(QodeType::Content->value)
                                 ->helperText('Module content stays available while a redirect is on.'),
+                            Select::make('domain_id')
+                                ->label('Domain')
+                                ->options(fn (): array => self::domainOptions())
+                                ->searchable()
+                                ->native(false)
+                                ->visible(fn (): bool => self::canChooseDomain())
+                                ->required(fn (): bool => self::canChooseDomain()),
+                            TextInput::make('slug')
+                                ->label('Vanity slug')
+                                ->helperText('Letters and digits only. Leave blank for auto Sqids.')
+                                ->regex('/^[a-z0-9]+$/')
+                                ->minLength(3)
+                                ->maxLength(64)
+                                ->visible(fn (): bool => self::featureEnabled('custom_slugs'))
+                                ->dehydrated(fn (): bool => self::featureEnabled('custom_slugs')),
                             Select::make('settings.redirect.to')
                                 ->label('Redirect to')
                                 ->options(fn (RedirectDestination $redirect): array => $redirect->modeOptions())
@@ -162,6 +182,62 @@ class QodeForm
                     'lg' => 1,
                 ]),
             ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function domainOptions(): array
+    {
+        $tenantId = auth()->user()?->tenant_id;
+        $options = [];
+
+        if (self::featureEnabled('platform_domain_choice')) {
+            $options += Domain::query()
+                ->where('type', DomainType::Platform)
+                ->where('status', DomainStatus::Active)
+                ->orderByDesc('is_default')
+                ->pluck('hostname', 'id')
+                ->all();
+        } else {
+            $default = Domain::defaultPlatform();
+
+            if ($default !== null) {
+                $options[$default->id] = $default->hostname;
+            }
+        }
+
+        if (self::featureEnabled('custom_domains') && $tenantId !== null) {
+            $options += Domain::query()
+                ->where('tenant_id', $tenantId)
+                ->where('type', DomainType::Custom)
+                ->whereIn('status', [DomainStatus::Verified, DomainStatus::Active])
+                ->orderBy('hostname')
+                ->pluck('hostname', 'id')
+                ->all();
+        }
+
+        return $options;
+    }
+
+    private static function canChooseDomain(): bool
+    {
+        return self::featureEnabled('platform_domain_choice') || self::featureEnabled('custom_domains');
+    }
+
+    private static function featureEnabled(string $key): bool
+    {
+        $tenant = auth()->user()?->tenant;
+
+        if ($tenant === null) {
+            return false;
+        }
+
+        try {
+            return (bool) (app(EffectiveEntitlements::class)->for($tenant)['features'][$key] ?? false);
+        } catch (ModelNotFoundException) {
+            return false;
+        }
     }
 
     /**

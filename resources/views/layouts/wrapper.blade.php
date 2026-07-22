@@ -6,16 +6,54 @@
     <title>@yield('title', config('app.name'))</title>
     @stack('head')
 
-    {{-- Placeholder: GA4 / Meta Pixel head tags (Chunk 3b) --}}
+    @php
+        $analytics = is_array(($qode ?? null)?->tenant?->analytics_settings ?? null)
+            ? $qode->tenant->analytics_settings
+            : [];
+        $ga4 = $analytics['ga4_measurement_id'] ?? null;
+        $metaPixel = $analytics['meta_pixel_id'] ?? null;
+    @endphp
+
+    @if (filled($ga4))
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $ga4 }}" data-deqode-ga4="{{ $ga4 }}"></script>
+        <script data-deqode-ga4-config="{{ $ga4 }}">
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', @json($ga4));
+        </script>
+    @endif
+
+    @if (filled($metaPixel))
+        <script data-deqode-meta-pixel="{{ $metaPixel }}">
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', @json($metaPixel));
+            fbq('track', 'PageView');
+        </script>
+    @endif
+
     @stack('analytics-head')
 </head>
 <body>
-    {{-- Placeholder: analytics body-start (Chunk 3b) --}}
     @stack('analytics-body-start')
 
     @yield('body')
 
-    {{-- Placeholder: analytics body-end / noscript (Chunk 3b) --}}
+    @if (filled($metaPixel))
+        <noscript data-deqode-meta-pixel-noscript="{{ $metaPixel }}">
+            <img height="1" width="1" style="display:none"
+                 src="https://www.facebook.com/tr?id={{ urlencode($metaPixel) }}&ev=PageView&noscript=1"
+                 alt="" />
+        </noscript>
+    @endif
+
     @stack('analytics-body-end')
 </body>
 </html>

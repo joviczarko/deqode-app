@@ -30,19 +30,20 @@ if ($scanPrefix !== '') {
     Route::get('/'.$scanPrefix.'/{slug}/download', QodeFileDownloadController::class)
         ->where('slug', '[a-z0-9]+')
         ->name('qodes.download');
-} else {
-    Route::get('/{slug}', QodeResolveController::class)
-        ->where('slug', '[a-z0-9]{3,}')
-        ->name('qodes.resolve');
-
-    Route::post('/{slug}/leads', CaptureLeadController::class)
-        ->where('slug', '[a-z0-9]{3,}')
-        ->name('qodes.leads.store');
-
-    Route::get('/{slug}/download', QodeFileDownloadController::class)
-        ->where('slug', '[a-z0-9]{3,}')
-        ->name('qodes.download');
 }
+
+// Host-based resolve for dedicated scan hosts and verified custom domains.
+Route::get('/{slug}', QodeResolveController::class)
+    ->where('slug', '[a-z0-9]{3,}')
+    ->name($scanPrefix === '' ? 'qodes.resolve' : 'qodes.resolve.host');
+
+Route::post('/{slug}/leads', CaptureLeadController::class)
+    ->where('slug', '[a-z0-9]{3,}')
+    ->name($scanPrefix === '' ? 'qodes.leads.store' : 'qodes.leads.store.host');
+
+Route::get('/{slug}/download', QodeFileDownloadController::class)
+    ->where('slug', '[a-z0-9]{3,}')
+    ->name($scanPrefix === '' ? 'qodes.download' : 'qodes.download.host');
 
 Route::middleware('auth')->group(function () {
     Route::get('/billing/demo/{token}', [DemoCheckoutController::class, 'show'])

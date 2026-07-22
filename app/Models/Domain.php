@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'tenant_id',
     'status',
     'is_default',
+    'verification_token',
+    'verified_at',
 ])]
 class Domain extends Model
 {
@@ -37,6 +39,7 @@ class Domain extends Model
             'type' => DomainType::class,
             'status' => DomainStatus::class,
             'is_default' => 'boolean',
+            'verified_at' => 'datetime',
         ];
     }
 
@@ -48,6 +51,11 @@ class Domain extends Model
     public function qodes(): HasMany
     {
         return $this->hasMany(Qode::class);
+    }
+
+    public function isServable(): bool
+    {
+        return in_array($this->status, [DomainStatus::Active, DomainStatus::Verified], true);
     }
 
     public static function defaultPlatform(): ?self

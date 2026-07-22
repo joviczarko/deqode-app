@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 3a complete — ready for Chunk 3b  
+**Status:** Chunk 3b complete  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -224,10 +224,10 @@ Settings reference `file_id`; public download page or direct download.
 
 ### Exit criteria
 
-* [ ] Unverified custom host does not serve.
-* [ ] Verified + TXT path works (feature test can fake DNS).
-* [ ] Vanity rejected when flag off.
-* [ ] Pest: hijack case — second tenant cannot claim same hostname.
+* [x] Unverified custom host does not serve.
+* [x] Verified + TXT path works (feature test can fake DNS).
+* [x] Vanity rejected when flag off.
+* [x] Pest: hijack case — second tenant cannot claim same hostname.
 
 ---
 

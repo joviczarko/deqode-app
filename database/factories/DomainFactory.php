@@ -25,6 +25,8 @@ class DomainFactory extends Factory
             'tenant_id' => null,
             'status' => DomainStatus::Active,
             'is_default' => false,
+            'verification_token' => null,
+            'verified_at' => null,
         ];
     }
 
@@ -35,6 +37,17 @@ class DomainFactory extends Factory
             'type' => DomainType::Platform,
             'is_default' => true,
             'status' => DomainStatus::Active,
+        ]);
+    }
+
+    public function customPending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => DomainType::Custom,
+            'status' => DomainStatus::Pending,
+            'is_default' => false,
+            'verification_token' => 'testtoken123',
+            'verified_at' => null,
         ]);
     }
 }

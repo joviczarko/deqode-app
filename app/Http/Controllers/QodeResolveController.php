@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Actions\RecordVisit;
-use App\Enums\DomainStatus;
 use App\Enums\QodeStatus;
 use App\Models\Domain;
 use App\Models\Qode;
@@ -51,15 +50,18 @@ class QodeResolveController extends Controller
     {
         $prefix = trim((string) config('deqode.scan_path_prefix', ''), '/');
 
-        // Local single-host mode: /r/{slug} always resolves against the default platform domain.
-        if ($prefix !== '') {
+        // Prefixed local path always uses the default platform domain.
+        if ($prefix !== '' && $request->is($prefix.'/*')) {
             return Domain::defaultPlatform();
         }
 
         $domain = Domain::query()
             ->where('hostname', $request->getHost())
-            ->where('status', DomainStatus::Active)
             ->first();
+
+        if ($domain === null || ! $domain->isServable()) {
+            return null;
+        }
 
         return $domain;
     }

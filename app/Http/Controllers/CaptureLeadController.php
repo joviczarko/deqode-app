@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Actions\CaptureLead;
-use App\Enums\DomainStatus;
 use App\Enums\QodeStatus;
 use App\Models\Domain;
 use App\Models\Qode;
@@ -48,13 +47,18 @@ class CaptureLeadController extends Controller
     {
         $prefix = trim((string) config('deqode.scan_path_prefix', ''), '/');
 
-        if ($prefix !== '') {
+        if ($prefix !== '' && $request->is($prefix.'/*')) {
             return Domain::defaultPlatform();
         }
 
-        return Domain::query()
+        $domain = Domain::query()
             ->where('hostname', $request->getHost())
-            ->where('status', DomainStatus::Active)
             ->first();
+
+        if ($domain === null || ! $domain->isServable()) {
+            return null;
+        }
+
+        return $domain;
     }
 }
