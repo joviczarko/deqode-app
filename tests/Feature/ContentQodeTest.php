@@ -21,11 +21,10 @@ it('shows content title and rich html body on the public page', function () {
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Product page',
+        'name' => 'Bottle story',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Bottle story',
             'body' => '<p>Fresh <strong>ingredients</strong> inside.</p>',
         ],
     ]);
@@ -45,11 +44,10 @@ it('renders tiptap json body stored in settings as html', function () {
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Legacy tip tap',
+        'name' => 'TipTap page',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'TipTap page',
             'body' => [
                 'type' => 'doc',
                 'content' => [
@@ -79,11 +77,10 @@ it('shows the public url and content fields on the edit form', function () {
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Editable page',
+        'name' => 'Bottle story',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Bottle story',
             'body' => '<p>Hello</p>',
         ],
     ]);
@@ -94,18 +91,22 @@ it('shows the public url and content fields on the edit form', function () {
 
     Livewire::test(EditQode::class, ['record' => $qode->getKey()])
         ->assertFormSet([
-            'settings.title' => 'Bottle story',
+            'name' => 'Bottle story',
             'settings.body' => '<p>Hello</p>',
             'type' => QodeType::Content->value,
-            'name' => 'Editable page',
         ])
-        ->assertSee($publicUrl, false)
         ->assertSee('QR code', false)
         ->assertSee('Code: '.$qode->slug, false)
         ->assertSee('Publish', false)
         ->assertSee('Organize', false)
-        ->assertSee('Title', false)
-        ->assertSee('Download', false);
+        ->assertSee('Qode name', false)
+        ->assertSee('Download', false)
+        ->assertDontSee('Copy link', false)
+        ->tap(function ($component) use ($publicUrl): void {
+            $headerUrl = (string) $component->instance()->getSchema('headerUrl')?->toHtml();
+
+            expect($headerUrl)->toContain($publicUrl);
+        });
 });
 
 it('persists body edits from the filament form onto the public page', function () {
@@ -116,11 +117,10 @@ it('persists body edits from the filament form onto the public page', function (
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Editable page',
+        'name' => 'Before',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Before',
             'body' => '<p>Old copy</p>',
         ],
     ]);
@@ -129,12 +129,11 @@ it('persists body edits from the filament form onto the public page', function (
 
     Livewire::test(EditQode::class, ['record' => $qode->getKey()])
         ->fillForm([
-            'name' => 'Editable page',
+            'name' => 'After edit',
             'collection_id' => $collection->id,
             'type' => QodeType::Content->value,
             'status' => $qode->status->value,
             'settings' => [
-                'title' => 'After edit',
                 'body' => '<p>New <em>landing</em> copy.</p>',
                 'redirect' => [
                     'to' => RedirectDestination::MODE_NONE,
@@ -148,7 +147,7 @@ it('persists body edits from the filament form onto the public page', function (
 
     $qode->refresh();
 
-    expect($qode->settings['title'])->toBe('After edit')
+    expect($qode->name)->toBe('After edit')
         ->and($qode->settings['body'])->toContain('landing');
 
     $this->get('/r/'.$qode->slug)

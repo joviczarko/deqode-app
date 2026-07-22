@@ -84,6 +84,11 @@ Portable foundation adapted from our Laravel + Filament SaaS defaults. DeQode-sp
 25. **OCR — not applicable to DeQode.** Ignore OCR/adapter postulates for this product.
 26. Public scan pages are **not** Filament/Livewire — Blade (+ minimal JS/fetch for forms). Redirect Qodes are bare HTTP redirects.
 27. Default public Qode codes use **Sqids**; resolve by stored `(domain_id, slug)` only.
+28. **Qode edit layout is fixed.** All Qode types share the same Filament create/edit shell:
+    - **Main canvas (left, ~2/3):** `Qode name` (`name`) at the top, then that module’s `editFormComponents()` from `QodeModule`.
+    - **Sidebar (right, ~1/3):** always `Publish` (status, module, redirect), `Organize` (collection, categories), optional module `editSidebarComponents()`, then `QR code` on edit.
+    - Do not embed module fields ad hoc in `QodeForm`; register them on the module class.
+    - Header actions on edit: public URL field (copy + open suffix actions) and Delete — not duplicate Open/Copy buttons elsewhere.
 
 ---
 

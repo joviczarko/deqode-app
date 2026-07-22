@@ -23,6 +23,8 @@ class QodeResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Qodes';
 
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Schema $schema): Schema

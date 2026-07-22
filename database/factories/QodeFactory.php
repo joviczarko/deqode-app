@@ -38,7 +38,6 @@ class QodeFactory extends Factory
                     'url' => 'https://example.com',
                     'target_qode_id' => null,
                 ],
-                'title' => 'Untitled',
                 'body' => '',
             ],
         ];

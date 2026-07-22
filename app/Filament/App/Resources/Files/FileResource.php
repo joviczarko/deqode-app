@@ -20,12 +20,15 @@ use Filament\Tables\Table;
 use Illuminate\Support\Arr;
 use InvalidArgumentException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use UnitEnum;
 
 class FileResource extends Resource
 {
     protected static ?string $model = File::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPaperClip;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Qodes';
 
     protected static ?string $recordTitleAttribute = 'original_name';
 

@@ -19,21 +19,19 @@ it('redirects to another qode that is not redirecting', function () {
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $content = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Landing',
+        'name' => 'Hello',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Hello',
             'body' => '<p>Hi</p>',
         ],
     ]);
 
     $printed = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Printed label',
+        'name' => 'Parked content',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Parked content',
             'body' => '<p>Still here</p>',
             'redirect' => [
                 'to' => RedirectDestination::MODE_QODE,
@@ -48,7 +46,7 @@ it('redirects to another qode that is not redirecting', function () {
         ->assertRedirect($targetUrl)
         ->assertStatus(302);
 
-    expect($printed->fresh()->settings['title'])->toBe('Parked content')
+    expect($printed->fresh()->name)->toBe('Parked content')
         ->and($printed->fresh()->type)->toBe(QodeType::Content);
 });
 
@@ -144,11 +142,10 @@ it('keeps module content while redirect is on and restores it when redirect is o
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Seasonal',
+        'name' => 'Winter story',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Winter story',
             'body' => '<p>Keep me</p>',
         ],
     ]);
@@ -165,7 +162,7 @@ it('keeps module content while redirect is on and restores it when redirect is o
     $qode->refresh();
 
     expect($qode->type)->toBe(QodeType::Content)
-        ->and($qode->settings['title'])->toBe('Winter story')
+        ->and($qode->name)->toBe('Winter story')
         ->and($qode->settings['body'])->toBe('<p>Keep me</p>')
         ->and($qode->settings['redirect']['to'])->toBe(RedirectDestination::MODE_URL);
 

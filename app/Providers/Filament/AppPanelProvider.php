@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\App\Auth\RegisterComplete;
 use App\Filament\App\Auth\RegisterStart;
 use App\Filament\App\Auth\SignupNotice;
+use App\Filament\App\Resources\Qodes\Pages\EditQode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -15,13 +16,16 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Livewire\Livewire;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -53,6 +57,19 @@ class AppPanelProvider extends PanelProvider
                 Route::get('register/complete', RegisterComplete::class)->name('register.complete');
                 Route::get('signup/notice', SignupNotice::class)->name('signup.notice');
             })
+            ->renderHook(
+                PanelsRenderHook::PAGE_HEADER_ACTIONS_BEFORE,
+                function (): Htmlable {
+                    $livewire = Livewire::current();
+
+                    if (! $livewire instanceof EditQode) {
+                        return new HtmlString('');
+                    }
+
+                    return new HtmlString((string) $livewire->getSchema('headerUrl')?->toHtml());
+                },
+                EditQode::class,
+            )
             ->renderHook(
                 PanelsRenderHook::BODY_START,
                 fn (): string => session()->has('impersonator_id')

@@ -23,11 +23,10 @@ it('renders content when redirect is off', function () {
     ]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Bottle label',
+        'name' => 'About this bottle',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'About this bottle',
             'body' => '<p>Story</p>',
         ],
     ]);
@@ -48,11 +47,10 @@ it('redirects to an external url with 302 when redirect is enabled', function ()
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Campaign',
+        'name' => 'Hidden while redirecting',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'Hidden while redirecting',
             'body' => '<p>Still stored</p>',
             'redirect' => [
                 'to' => RedirectDestination::MODE_URL,
@@ -96,11 +94,10 @@ it('renders content qodes through the pico wrapper stack', function () {
     $collection = Collection::factory()->create(['tenant_id' => $tenant->id]);
 
     $qode = app(CreateQode::class)->handle($tenant, [
-        'name' => 'Product story',
+        'name' => 'About this bottle',
         'collection_id' => $collection->id,
         'type' => QodeType::Content->value,
         'settings' => [
-            'title' => 'About this bottle',
             'body' => '<p>Ingredients and story.</p>',
         ],
     ]);

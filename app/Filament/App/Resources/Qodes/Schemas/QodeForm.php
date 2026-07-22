@@ -8,14 +8,12 @@ use App\Models\Collection;
 use App\Models\Qode;
 use App\QodeModules\ModuleRegistry;
 use App\QodeModules\RedirectDestination;
-use App\Support\QodeUrlBuilder;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -37,9 +35,9 @@ class QodeForm
                 'lg' => 3,
             ])
             ->components([
-                Group::make([
-                    TextInput::make('settings.title')
-                        ->label('Title')
+                Group::make(fn (Get $get): array => [
+                    TextInput::make('name')
+                        ->label('Qode name')
                         ->required()
                         ->maxLength(255)
                         ->default('Untitled')
@@ -47,25 +45,13 @@ class QodeForm
                             'style' => 'font-size: 1.5rem; font-weight: 600; line-height: 1.3;',
                         ])
                         ->columnSpanFull(),
-                    RichEditor::make('settings.body')
-                        ->label('Body')
-                        // settings is a JSON cast; without this Filament stores TipTap JSON, not HTML.
-                        ->json(false)
-                        ->toolbarButtons([
-                            ['bold', 'italic', 'underline', 'strike', 'link'],
-                            ['h2', 'h3'],
-                            ['bulletList', 'orderedList'],
-                            ['undo', 'redo'],
-                        ])
-                        ->fileAttachments(false)
-                        ->columnSpanFull(),
+                    ...self::moduleFormComponents($get),
                 ])
                     ->columnSpan([
                         'default' => 1,
                         'lg' => 2,
-                    ])
-                    ->visible(fn (Get $get): bool => self::moduleType($get) === QodeType::Content),
-                Group::make([
+                    ]),
+                Group::make(fn (Get $get): array => [
                     Section::make('Publish')
                         ->schema([
                             Select::make('status')
@@ -122,11 +108,6 @@ class QodeForm
                         ]),
                     Section::make('Organize')
                         ->schema([
-                            TextInput::make('name')
-                                ->label('Internal name')
-                                ->required()
-                                ->maxLength(255)
-                                ->helperText('Only visible in your panel.'),
                             Select::make('collection_id')
                                 ->label('Collection')
                                 ->options(fn () => Collection::query()->orderBy('name')->pluck('name', 'id'))
@@ -139,18 +120,12 @@ class QodeForm
                                 ->preload()
                                 ->searchable(),
                         ]),
+                    ...self::moduleSidebarSections($get),
                     Section::make('QR code')
                         ->description(fn (?Qode $record): ?string => filled($record?->slug)
                             ? 'Code: '.$record->slug
                             : null)
                         ->schema([
-                            TextEntry::make('public_url')
-                                ->label('URL')
-                                ->state(fn (?Qode $record): ?string => self::publicUrl($record))
-                                ->placeholder('Save to generate the public URL.')
-                                ->copyable()
-                                ->copyMessage('URL copied')
-                                ->columnSpanFull(),
                             View::make('filament.app.qodes.qr-preview')
                                 ->viewData(function (LivewireComponent $livewire): array {
                                     $record = method_exists($livewire, 'getRecord')
@@ -189,6 +164,43 @@ class QodeForm
             ]);
     }
 
+    /**
+     * @return array<Component>
+     */
+    private static function moduleFormComponents(Get $get): array
+    {
+        $type = self::moduleType($get);
+
+        if ($type === null) {
+            return [];
+        }
+
+        return app(ModuleRegistry::class)->get($type)->editFormComponents();
+    }
+
+    /**
+     * @return array<Section>
+     */
+    private static function moduleSidebarSections(Get $get): array
+    {
+        $type = self::moduleType($get);
+
+        if ($type === null) {
+            return [];
+        }
+
+        $components = app(ModuleRegistry::class)->get($type)->editSidebarComponents();
+
+        if ($components === []) {
+            return [];
+        }
+
+        return [
+            Section::make(fn (ModuleRegistry $registry): string => $registry->get($type)->label())
+                ->schema($components),
+        ];
+    }
+
     private static function moduleType(Get $get): ?QodeType
     {
         $type = $get('type');
@@ -207,17 +219,6 @@ class QodeForm
     private static function redirectMode(Get $get): string
     {
         return (string) ($get('settings.redirect.to') ?? RedirectDestination::MODE_NONE);
-    }
-
-    private static function publicUrl(?Qode $record): ?string
-    {
-        if ($record === null || blank($record->slug)) {
-            return null;
-        }
-
-        $record->loadMissing('domain');
-
-        return app(QodeUrlBuilder::class)->forQode($record);
     }
 
     private static function qrUrl(?Qode $record, string $format): ?string
