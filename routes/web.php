@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Auth\SignupIntentController;
 use App\Http\Controllers\Billing\DemoCheckoutController;
+use App\Http\Controllers\CaptureLeadController;
 use App\Http\Controllers\QodeQrCodeController;
 use App\Http\Controllers\QodeResolveController;
 use Illuminate\Support\Facades\Route;
@@ -20,10 +21,18 @@ if ($scanPrefix !== '') {
     Route::get('/'.$scanPrefix.'/{slug}', QodeResolveController::class)
         ->where('slug', '[a-z0-9]+')
         ->name('qodes.resolve');
+
+    Route::post('/'.$scanPrefix.'/{slug}/leads', CaptureLeadController::class)
+        ->where('slug', '[a-z0-9]+')
+        ->name('qodes.leads.store');
 } else {
     Route::get('/{slug}', QodeResolveController::class)
         ->where('slug', '[a-z0-9]{3,}')
         ->name('qodes.resolve');
+
+    Route::post('/{slug}/leads', CaptureLeadController::class)
+        ->where('slug', '[a-z0-9]{3,}')
+        ->name('qodes.leads.store');
 }
 
 Route::middleware('auth')->group(function () {

@@ -7,11 +7,13 @@ use App\Billing\Gateways\DemoGateway;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\File;
+use App\Models\Lead;
 use App\Models\Qode;
 use App\Models\Tenant;
 use App\Policies\CategoryPolicy;
 use App\Policies\CollectionPolicy;
 use App\Policies\FilePolicy;
+use App\Policies\LeadPolicy;
 use App\Policies\QodePolicy;
 use App\Policies\TenantPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(File::class, FilePolicy::class);
         Gate::policy(Tenant::class, TenantPolicy::class);
         Gate::policy(Qode::class, QodePolicy::class);
+        Gate::policy(Lead::class, LeadPolicy::class);
 
         $this->ensureS3Configuration();
     }

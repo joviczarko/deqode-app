@@ -6,12 +6,14 @@ enum QodeType: string
 {
     case Content = 'content';
     case LinkHub = 'link_hub';
+    case Form = 'form';
 
     public function label(): string
     {
         return match ($this) {
             self::Content => 'Content',
             self::LinkHub => 'Link hub',
+            self::Form => 'Form',
         };
     }
 }

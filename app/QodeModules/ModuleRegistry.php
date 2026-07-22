@@ -5,6 +5,7 @@ namespace App\QodeModules;
 use App\Enums\QodeType;
 use App\QodeModules\Contracts\QodeModule;
 use App\QodeModules\Modules\ContentModule;
+use App\QodeModules\Modules\FormModule;
 use App\QodeModules\Modules\LinkHubModule;
 use InvalidArgumentException;
 
@@ -16,6 +17,7 @@ class ModuleRegistry
     private array $modules = [
         'content' => ContentModule::class,
         'link_hub' => LinkHubModule::class,
+        'form' => FormModule::class,
     ];
 
     public function get(QodeType|string $type): QodeModule

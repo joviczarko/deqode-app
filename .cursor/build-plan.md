@@ -2,7 +2,7 @@
 
 **Source of truth:** [project.md](project.md) v2.3  
 **Backlog:** [backlog.md](backlog.md)  
-**Status:** Chunk 2c complete — ready for Chunk 2d  
+**Status:** Chunk 2d complete — ready for Chunk 2e  
 **Rule:** Do not start the next chunk until the current chunk’s exit criteria pass.
 
 Layers are split into **controllable chunks**. Prefer KISS; do not pull backlog items forward.
@@ -180,8 +180,8 @@ Repeater links; public list in default template.
 
 ### Exit criteria
 
-* [ ] Submit creates lead; visible/exportable in panel.
-* [ ] Pest: validation + store.
+* [x] Submit creates lead; visible/exportable in panel.
+* [x] Pest: validation + store.
 
 ---
 
